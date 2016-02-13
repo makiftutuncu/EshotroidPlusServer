@@ -1,0 +1,63 @@
+package com.mehmetakiftutuncu.models
+
+import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
+import com.mehmetakiftutuncu.models.base.{ModelBase, Jsonable}
+import com.mehmetakiftutuncu.utilities.Log
+import play.api.libs.json.{Json, JsValue, JsObject}
+
+case class Location(latitude: Double, longitude: Double) extends ModelBase {
+  override def toJson: JsObject = Location.toJson(this)
+}
+
+object Location extends LocationBase
+
+trait LocationBase extends Jsonable[Location] {
+  override def toJson(location: Location): JsObject = {
+    Json.obj(
+      "lat" -> location.latitude,
+      "lon" -> location.longitude
+    )
+  }
+
+  override def fromJson(json: JsValue): Either[Errors, Location] = {
+    try {
+      val latitudeAsOpt  = (json \ "lat").asOpt[Double]
+      val longitudeAsOpt = (json \ "lon").asOpt[Double]
+
+      val latitudeErrors = if (latitudeAsOpt.isEmpty) {
+        Errors(CommonError.invalidData.reason("Location latitude is missing!"))
+      } else if (latitudeAsOpt.get < -90.0 || latitudeAsOpt.get > 90.0) {
+        Errors(CommonError.invalidData.reason("Location latitude must be in [-90.0, 90.0]!").data(latitudeAsOpt.get.toString))
+      } else {
+        Errors.empty
+      }
+
+      val longitudeErrors = if (longitudeAsOpt.isEmpty) {
+        Errors(CommonError.invalidData.reason("Location longitude is missing!"))
+      } else if (longitudeAsOpt.get < -180.0 || longitudeAsOpt.get > 180.0) {
+        Errors(CommonError.invalidData.reason("Location longitude must be in [-180.0, 180.0]!").data(longitudeAsOpt.get.toString))
+      } else {
+        Errors.empty
+      }
+
+      val errors = latitudeErrors ++ longitudeErrors
+
+      if (errors.nonEmpty) {
+        Log.error("Location.fromJson", "Failed to create location from Json!", errors)
+
+        Left(errors)
+      } else {
+        val location = Location(latitudeAsOpt.get, longitudeAsOpt.get)
+
+        Right(location)
+      }
+    } catch {
+      case t: Throwable =>
+        val errors = Errors(CommonError.invalidData.data(json.toString()))
+
+        Log.error(t, "Location.fromJson", "Failed to create location from Json!", errors)
+
+        Left(errors)
+    }
+  }
+}
