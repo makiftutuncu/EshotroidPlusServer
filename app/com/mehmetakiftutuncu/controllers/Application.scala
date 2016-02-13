@@ -1,4 +1,4 @@
-package controllers
+package com.mehmetakiftutuncu.controllers
 
 import play.api.mvc._
 

@@ -7,9 +7,11 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 scalaVersion := "2.11.7"
 
 libraryDependencies ++= Seq(
+  evolutions,
   jdbc,
   cache,
   ws,
+  "com.github.mehmetakiftutuncu" %% "errors" % "1.0",
   specs2 % Test
 )
 
