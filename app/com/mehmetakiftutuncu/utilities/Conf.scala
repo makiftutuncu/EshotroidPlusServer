@@ -11,6 +11,7 @@ trait ConfBase {
 
   object Hosts {
     val eshotHome: String = getConfString("eshotroidplus.hosts.eshotHome", "")
+    val busPage: String   = getConfString("eshotroidplus.hosts.busPage", "")
   }
 
   def getConfInt(key: String, defaultValue: Int): Int = {

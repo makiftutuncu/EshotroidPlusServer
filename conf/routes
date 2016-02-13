@@ -3,5 +3,6 @@
 # ~~~~
 
 # Home page
-GET     /       com.mehmetakiftutuncu.controllers.Application.index
-GET     /test   com.mehmetakiftutuncu.controllers.Application.test
+GET     /           com.mehmetakiftutuncu.controllers.Application.test
+
+GET     /bus/list   com.mehmetakiftutuncu.controllers.BusController.list

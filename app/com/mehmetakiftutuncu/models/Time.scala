@@ -7,6 +7,8 @@ import play.api.libs.json.{Json, JsValue, JsObject}
 
 case class Time(hour: Int, minute: Int) extends ModelBase {
   override def toJson: JsObject = Time.toJson(this)
+
+  def toTimeString: String = f"$hour%02d:$minute%02d"
 }
 
 object Time extends TimeBase
