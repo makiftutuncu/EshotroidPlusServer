@@ -1,4 +1,4 @@
-package com.mehmetakiftutuncu.utilities
+package com.mehmetakiftutuncu.utilities.base
 
 trait EnumBase[E] {
   val values: Set[E]

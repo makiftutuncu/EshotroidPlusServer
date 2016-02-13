@@ -1,6 +1,6 @@
 package com.mehmetakiftutuncu.models
 
-import com.mehmetakiftutuncu.utilities.EnumBase
+import com.mehmetakiftutuncu.utilities.base.EnumBase
 
 sealed trait Direction
 
