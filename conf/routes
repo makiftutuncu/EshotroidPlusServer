@@ -3,6 +3,7 @@
 # ~~~~
 
 # Home page
-GET     /           com.mehmetakiftutuncu.controllers.Application.test
+GET     /              com.mehmetakiftutuncu.controllers.Application.test
 
-GET     /bus/list   com.mehmetakiftutuncu.controllers.BusController.list
+GET     /bus/list      com.mehmetakiftutuncu.controllers.BusController.list
+GET     /bus/:busId    com.mehmetakiftutuncu.controllers.BusController.getBus(busId: Int)

@@ -1,3 +1,6 @@
+conf/application.prod.conf
+conf/secret.prod.conf
+
 # Created by .ignore support plugin (hsz.mobi)
 
 ### PlayFramework template

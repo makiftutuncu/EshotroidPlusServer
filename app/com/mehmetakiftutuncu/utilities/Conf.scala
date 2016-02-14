@@ -9,6 +9,10 @@ trait ConfBase {
     val timeoutInSeconds: Int = getConfInt("eshotroidplus.http.timeout", 10)
   }
 
+  object Database {
+    val timeoutInSeconds: Int = getConfInt("eshotroidplus.database.timeout", 5)
+  }
+
   object Hosts {
     val eshotHome: String = getConfString("eshotroidplus.hosts.eshotHome", "")
     val busPage: String   = getConfString("eshotroidplus.hosts.busPage", "")

@@ -7,8 +7,6 @@ import play.api.libs.json.{Json, JsValue, JsObject}
 
 case class Stop(id: Int, name: String, busId: Int, direction: Direction, location: Location) extends ModelBase {
   override def toJson: JsObject = Stop.toJson(this)
-
-  def toJsonWithoutBusId: JsObject = Stop.toJson(this) - "busId"
 }
 
 object Stop extends StopBase {
@@ -37,31 +35,31 @@ trait StopBase extends Jsonable[Stop] {
       val errorsOrLocation = Location.fromJson((json \ "location").getOrElse(Json.obj()))
 
       val idErrors = if (idAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Stop id is missing!"))
+        Errors(CommonError.invalidData.reason("Id is missing!"))
       } else if (idAsOpt.get <= 0) {
-        Errors(CommonError.invalidData.reason("Stop id must be > 0!").data(idAsOpt.get.toString))
+        Errors(CommonError.invalidData.reason("Id must be > 0!").data(idAsOpt.get.toString))
       } else {
         Errors.empty
       }
 
       val nameErrors = if (nameAsOpt.getOrElse("").isEmpty) {
-        Errors(CommonError.invalidData.reason("Stop name is missing!"))
+        Errors(CommonError.invalidData.reason("Name is missing!"))
       } else {
         Errors.empty
       }
 
       val busIdErrors = if (busIdAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Stop bus id is missing!"))
+        Errors(CommonError.invalidData.reason("Bus id is missing!"))
       } else if (busIdAsOpt.get <= 0) {
-        Errors(CommonError.invalidData.reason("Stop bus id must be > 0!").data(busIdAsOpt.get.toString))
+        Errors(CommonError.invalidData.reason("Bus id must be > 0!").data(busIdAsOpt.get.toString))
       } else {
         Errors.empty
       }
 
       val directionErrors = if (directionAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Stop direction is missing!"))
+        Errors(CommonError.invalidData.reason("Direction is missing!"))
       } else if (Directions.withNameOptional(directionAsOpt.get).isEmpty) {
-        Errors(CommonError.invalidData.reason("Stop direction is invalid!").data(directionAsOpt.get.toString))
+        Errors(CommonError.invalidData.reason("Direction is invalid!").data(directionAsOpt.get.toString))
       } else {
         Errors.empty
       }
@@ -71,19 +69,25 @@ trait StopBase extends Jsonable[Stop] {
       val errors = idErrors ++ nameErrors ++ busIdErrors ++ directionErrors ++ locationErrors
 
       if (errors.nonEmpty) {
-        Log.error("Stop.fromJson", "Failed to create stop from Json!", errors)
+        Log.error("Stop.fromJson", s"""Failed to create stop from "$json"!""", errors)
 
         Left(errors)
       } else {
-        val stop = Stop(idAsOpt.get, nameAsOpt.get, busIdAsOpt.get, Directions.withName(directionAsOpt.get), errorsOrLocation.right.get)
+        val stop = Stop(
+          id        = idAsOpt.get,
+          name      = nameAsOpt.get,
+          busId     = busIdAsOpt.get,
+          direction = Directions.withName(directionAsOpt.get),
+          location  = errorsOrLocation.right.get
+        )
 
         Right(stop)
       }
     } catch {
       case t: Throwable =>
-        val errors = Errors(CommonError.invalidData.data(json.toString()))
+        val errors = Errors(CommonError.invalidData)
 
-        Log.error(t, "Stop.fromJson", "Failed to create stop from Json!", errors)
+        Log.error(t, "Stop.fromJson", s"""Failed to create stop from "$json"!""", errors)
 
         Left(errors)
     }

@@ -4,8 +4,17 @@ import com.github.mehmetakiftutuncu.errors.Errors
 import play.api.Logger
 
 object Log {
-  def debug = ???
-  def warn  = ???
+  def debug(tag: => String, message: => String) = {
+    val log = s"""[$tag] $message"""
+
+    Logger.debug(log)
+  }
+
+  def warn(tag: => String, message: => String) = {
+    val log = s"""[$tag] $message"""
+
+    Logger.warn(log)
+  }
 
   def error(tag: => String, message: => String) = {
     val log = s"""[$tag] $message"""

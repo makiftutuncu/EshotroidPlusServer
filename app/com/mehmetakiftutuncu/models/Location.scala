@@ -25,17 +25,17 @@ trait LocationBase extends Jsonable[Location] {
       val longitudeAsOpt = (json \ "lon").asOpt[Double]
 
       val latitudeErrors = if (latitudeAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Location latitude is missing!"))
+        Errors(CommonError.invalidData.reason("Latitude is missing!"))
       } else if (latitudeAsOpt.get < -90.0 || latitudeAsOpt.get > 90.0) {
-        Errors(CommonError.invalidData.reason("Location latitude must be in [-90.0, 90.0]!").data(latitudeAsOpt.get.toString))
+        Errors(CommonError.invalidData.reason("Latitude must be in [-90.0, 90.0]!").data(latitudeAsOpt.get.toString))
       } else {
         Errors.empty
       }
 
       val longitudeErrors = if (longitudeAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Location longitude is missing!"))
+        Errors(CommonError.invalidData.reason("Longitude is missing!"))
       } else if (longitudeAsOpt.get < -180.0 || longitudeAsOpt.get > 180.0) {
-        Errors(CommonError.invalidData.reason("Location longitude must be in [-180.0, 180.0]!").data(longitudeAsOpt.get.toString))
+        Errors(CommonError.invalidData.reason("Longitude must be in [-180.0, 180.0]!").data(longitudeAsOpt.get.toString))
       } else {
         Errors.empty
       }
@@ -43,7 +43,7 @@ trait LocationBase extends Jsonable[Location] {
       val errors = latitudeErrors ++ longitudeErrors
 
       if (errors.nonEmpty) {
-        Log.error("Location.fromJson", "Failed to create location from Json!", errors)
+        Log.error("Location.fromJson", s"""Failed to create location from "$json"!""", errors)
 
         Left(errors)
       } else {
@@ -53,9 +53,9 @@ trait LocationBase extends Jsonable[Location] {
       }
     } catch {
       case t: Throwable =>
-        val errors = Errors(CommonError.invalidData.data(json.toString()))
+        val errors = Errors(CommonError.invalidData)
 
-        Log.error(t, "Location.fromJson", "Failed to create location from Json!", errors)
+        Log.error(t, "Location.fromJson", s"""Failed to create location from "$json"!""", errors)
 
         Left(errors)
     }

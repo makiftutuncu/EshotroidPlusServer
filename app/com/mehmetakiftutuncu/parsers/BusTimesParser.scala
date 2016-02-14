@@ -2,12 +2,12 @@ package com.mehmetakiftutuncu.parsers
 
 import com.mehmetakiftutuncu.utilities.{HttpBase, ConfBase}
 
-object BusParser extends BusParserBase {
+object BusTimesParser extends BusTimesParserBase {
   override protected def Conf: ConfBase = com.mehmetakiftutuncu.utilities.Conf
   override protected def Http: HttpBase = com.mehmetakiftutuncu.utilities.Http
 }
 
-trait BusParserBase {
+trait BusTimesParserBase {
   protected def Conf: ConfBase
   protected def Http: HttpBase
 
@@ -32,11 +32,4 @@ trait BusParserBase {
   private val timeUlStart = """<ul class="timescape">"""
   private val timeUlEnd   = """</ul>"""
   private val timeLiRegex = """<li>\s*?<span>(\d{2}):(\d{2})<\/span>\s*?<\/li>""".r
-
-  /* Only occurrence of "stopsUlStart" and "stopsUlEnd" is for list of stops
-   *
-   * Inside the occurrence, every match to "stopLiRegex" gives "stopId" and "stopName" respectively with group(1) and group(2) */
-  private val stopsUlStart = """<ul class="transfer">"""
-  private val stopsUlEnd   = """</ul>"""
-  private val stopLiRegex  = """<li.+?id="(\d+)">(.+?)<\/li>""".r
 }
