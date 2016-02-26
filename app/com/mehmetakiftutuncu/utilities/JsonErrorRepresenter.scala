@@ -1,9 +1,9 @@
 package com.mehmetakiftutuncu.utilities
 
-import com.github.mehmetakiftutuncu.errors.{CommonError, SimpleError}
 import com.github.mehmetakiftutuncu.errors.base.ErrorBase
 import com.github.mehmetakiftutuncu.errors.representation.ErrorRepresenter
-import play.api.libs.json.{JsNumber, Json, JsValue}
+import com.github.mehmetakiftutuncu.errors.{CommonError, SimpleError}
+import play.api.libs.json.{JsNumber, JsValue, Json}
 
 /**
   * This representer represents errors using Play Framework's Json APIs.

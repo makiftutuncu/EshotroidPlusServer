@@ -12,16 +12,17 @@ CREATE TABLE `Time` (
   `direction` VARCHAR(32) NOT NULL,
   `hour`      TINYINT     NOT NULL,
   `minute`    TINYINT     NOT NULL,
-  UNIQUE KEY `uniqueTime` (`busId`, `dayType`, `direction`)
+  UNIQUE KEY `uniqueTime` (`busId`, `dayType`, `direction`, `hour`, `minute`)
 ) DEFAULT CHARSET=utf8;
 
 CREATE TABLE `Stop` (
-  `id`        SMALLINT     NOT NULL PRIMARY KEY,
+  `id`        MEDIUMINT    NOT NULL,
   `name`      VARCHAR(128) NOT NULL,
   `busId`     SMALLINT     NOT NULL,
   `direction` VARCHAR(32)  NOT NULL,
   `latitude`  FLOAT        NOT NULL,
-  `longitude` FLOAT        NOT NULL
+  `longitude` FLOAT        NOT NULL,
+  UNIQUE KEY `uniqueStop` (`id`, `busId`, `direction`)
 ) DEFAULT CHARSET=utf8;
 
 CREATE TABLE `Route` (

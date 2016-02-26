@@ -1,12 +1,13 @@
 package com.mehmetakiftutuncu.utilities
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import play.api.http.{Writeable, Status}
-import play.api.libs.ws.{WSRequest, WSResponse}
 import play.api.Play.current
+import play.api.http.{HeaderNames, Status, Writeable}
+import play.api.libs.ws.{WSRequest, WSResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.matching.Regex
 
 object Http extends HttpBase {
   override protected def Conf: ConfBase           = com.mehmetakiftutuncu.utilities.Conf
@@ -17,42 +18,63 @@ trait HttpBase {
   protected def Conf: ConfBase
   protected def WSBuilder: WSBuilderBase
 
-  def getAsString(url: String): Future[Either[Errors, String]] = {
-    get[String](url) {
+  val eshotSessionIdCookieName: String = "ASP.NET_SessionId"
+  val eshotSessionIdRegex: Regex       = s"""$eshotSessionIdCookieName=(.+);""".r
+
+  lazy val eshotSessionId: Future[String] = {
+    get[String](Conf.Hosts.eshotHome, "") {
       wsResponse =>
-        val status: Int = wsResponse.status
+        val header: String    = wsResponse.header(HeaderNames.SET_COOKIE).getOrElse("")
+        val sessionId: String = eshotSessionIdRegex.findFirstMatchIn(header).map(_.group(1)).getOrElse("")
 
-        if (status != Status.OK) {
-          val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+        Right(sessionId)
+    } map(_.right.getOrElse(""))
+  }
 
-          Log.error("Http.getAsString", "Received invalid HTTP status!", errors)
+  def getAsString(url: String): Future[Either[Errors, String]] = {
+    eshotSessionId.flatMap {
+      sessionId =>
+        get[String](url, sessionId) {
+          wsResponse =>
+            val status: Int = wsResponse.status
 
-          Left(errors)
-        } else {
-          Right(wsResponse.body)
+            if (status != Status.OK) {
+              val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+
+              Log.error("Http.getAsString", "Received invalid HTTP status!", errors)
+
+              Left(errors)
+            } else {
+              Right(wsResponse.body)
+            }
         }
     }
   }
 
   def postFormAsString(url: String, form: Map[String, Seq[String]]): Future[Either[Errors, String]] = {
-    post[Map[String, Seq[String]], String](url, form) {
-      wsResponse =>
-        val status: Int = wsResponse.status
+    eshotSessionId.flatMap {
+      sessionId =>
+        post[Map[String, Seq[String]], String](url, sessionId, form) {
+          wsResponse =>
+            val status: Int = wsResponse.status
 
-        if (status != Status.OK) {
-          val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+            if (status != Status.OK) {
+              val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
 
-          Log.error("Http.postFormAsString", "Received invalid HTTP status!", errors)
+              Log.error("Http.postFormAsString", "Received invalid HTTP status!", errors)
 
-          Left(errors)
-        } else {
-          Right(wsResponse.body)
+              Left(errors)
+            } else {
+              Right(wsResponse.body)
+            }
         }
     }
   }
 
-  private def get[R](url: String)(action: WSResponse => Either[Errors, R]): Future[Either[Errors, R]] = {
-    build(url).get().map(wsResponse => action(wsResponse)).recover {
+  def get[R](url: String, sessionId: String)(action: WSResponse => Either[Errors, R]): Future[Either[Errors, R]] = {
+    build(url)
+      .withHeaders(HeaderNames.COOKIE -> s"$eshotSessionIdCookieName=$sessionId")
+      .get().map(wsResponse => action(wsResponse)).recover {
       case t: Throwable =>
         val errors = Errors(CommonError.requestFailed.reason("GET request failed!").data(url))
 
@@ -62,8 +84,10 @@ trait HttpBase {
     }
   }
 
-  private def post[B, R](url: String, body: B)(action: WSResponse => Either[Errors, R])(implicit wrt: Writeable[B]): Future[Either[Errors, R]] = {
-    build(url).post(body)(wrt).map(wsResponse => action(wsResponse)).recover {
+  def post[B, R](url: String, sessionId: String, body: B)(action: WSResponse => Either[Errors, R])(implicit wrt: Writeable[B]): Future[Either[Errors, R]] = {
+    build(url)
+      .withHeaders(HeaderNames.COOKIE -> s"$eshotSessionIdCookieName=$sessionId")
+      .post(body)(wrt).map(wsResponse => action(wsResponse)).recover {
       case t: Throwable =>
         val errors = Errors(CommonError.requestFailed.reason("POST request failed!").data(url))
 

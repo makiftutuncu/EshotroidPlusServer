@@ -1,20 +1,87 @@
 package com.mehmetakiftutuncu.models
 
+import anorm.NamedParameter
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
-import com.mehmetakiftutuncu.utilities.Log
-import play.api.libs.json.{Json, JsValue, JsObject}
+import com.mehmetakiftutuncu.utilities.{DatabaseBase, Log}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 case class Stop(id: Int, name: String, busId: Int, direction: Direction, location: Location) extends ModelBase {
   override def toJson: JsObject = Stop.toJson(this)
 }
 
 object Stop extends StopBase {
-  override def Location: LocationBase = com.mehmetakiftutuncu.models.Location
+  override protected def Database: DatabaseBase = com.mehmetakiftutuncu.utilities.Database
 }
 
 trait StopBase extends Jsonable[Stop] {
-  protected def Location: LocationBase
+  protected def Database: DatabaseBase
+
+  def getStopsFromDB(busId: Int, direction: Direction): Either[Errors, List[Stop]] = {
+    val sql = anorm.SQL("""SELECT * FROM Stop WHERE busId = {busId} AND direction = {direction} ORDER BY id""").on(
+      "busId" -> busId, "direction" -> direction.toString
+    )
+
+    try {
+      Database.getMultiple(sql) match {
+        case Left(getStopsErrors) =>
+          Left(getStopsErrors)
+
+        case Right(stopRows) =>
+          val stops: List[Stop] = stopRows.map {
+            row =>
+              val id        = row[Int]("Stop.id")
+              val name      = row[String]("Stop.name")
+              val latitude  = row[Double]("Stop.latitude")
+              val longitude = row[Double]("Stop.longitude")
+
+              Stop(id, name, busId, direction, Location(latitude, longitude))
+          }
+
+          Right(stops)
+      }
+    } catch {
+      case t: Throwable =>
+        val errors: Errors = Errors(CommonError.database)
+
+        Log.error(t, "Stop.getStopsFromDB", s"""Failed to get stops for bus "$busId" in direction "$direction" from DB!""")
+
+        Left(errors)
+    }
+  }
+
+  def saveStopsToDB(stops: List[Stop]): Errors = {
+    val insert = """INSERT INTO Stop (id, name, busId, direction, latitude, longitude) VALUES """
+
+    val (values: List[String], parameters: List[NamedParameter]) = stops.zipWithIndex.foldLeft(List.empty[String], List.empty[NamedParameter]) {
+      case ((currentValues, currentParameters), (stop, index)) =>
+        val value = s"""({id_$index}, {name_$index}, {busId_$index}, {direction_$index}, {latitude_$index}, {longitude_$index})"""
+
+        val parameters = List(
+          NamedParameter(s"id_$index",        stop.id),
+          NamedParameter(s"name_$index",      stop.name),
+          NamedParameter(s"busId_$index",     stop.busId),
+          NamedParameter(s"direction_$index", stop.direction.toString),
+          NamedParameter(s"latitude_$index",  stop.location.latitude),
+          NamedParameter(s"longitude_$index", stop.location.longitude)
+        )
+
+        (currentValues :+ value) -> (currentParameters ++ parameters)
+    }
+
+    val sql = anorm.SQL(insert + values.mkString(", ")).on(parameters:_*)
+
+    try {
+      Database.insert(sql)
+    } catch {
+      case t: Throwable =>
+        val errors: Errors = Errors(CommonError.database)
+
+        Log.error(t, "Stop.saveStopsToDB", s"""Failed to save stops "${Json.toJson(stops.map(_.toJson))}" to DB!""")
+
+        errors
+    }
+  }
 
   override def toJson(stop: Stop): JsObject = {
     Json.obj(
@@ -87,7 +154,7 @@ trait StopBase extends Jsonable[Stop] {
       case t: Throwable =>
         val errors = Errors(CommonError.invalidData)
 
-        Log.error(t, "Stop.fromJson", s"""Failed to create stop from "$json"!""", errors)
+        Log.error(t, "Stop.fromJson", s"""Failed to create stop from "$json"!""")
 
         Left(errors)
     }

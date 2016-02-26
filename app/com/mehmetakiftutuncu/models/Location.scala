@@ -1,9 +1,9 @@
 package com.mehmetakiftutuncu.models
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.models.base.{ModelBase, Jsonable}
+import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
 import com.mehmetakiftutuncu.utilities.Log
-import play.api.libs.json.{Json, JsValue, JsObject}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 case class Location(latitude: Double, longitude: Double) extends ModelBase {
   override def toJson: JsObject = Location.toJson(this)
@@ -55,7 +55,7 @@ trait LocationBase extends Jsonable[Location] {
       case t: Throwable =>
         val errors = Errors(CommonError.invalidData)
 
-        Log.error(t, "Location.fromJson", s"""Failed to create location from "$json"!""", errors)
+        Log.error(t, "Location.fromJson", s"""Failed to create location from "$json"!""")
 
         Left(errors)
     }

@@ -1,9 +1,10 @@
 package com.mehmetakiftutuncu.models
 
+import anorm.NamedParameter
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
-import com.mehmetakiftutuncu.utilities.Log
-import play.api.libs.json.{Json, JsValue, JsObject}
+import com.mehmetakiftutuncu.utilities.{DatabaseBase, Log}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 case class Time(busId: Int, dayType: DayType, direction: Direction, hour: Int, minute: Int) extends ModelBase {
   override def toJson: JsObject = Time.toJson(this)
@@ -11,9 +12,82 @@ case class Time(busId: Int, dayType: DayType, direction: Direction, hour: Int, m
   def toTimeString: String = f"$hour%02d:$minute%02d"
 }
 
-object Time extends TimeBase
+object Time extends TimeBase {
+  override protected def Database: DatabaseBase = com.mehmetakiftutuncu.utilities.Database
+}
 
 trait TimeBase extends Jsonable[Time] {
+  protected def Database: DatabaseBase
+
+  def getTimesFromDB(busId: Int): Either[Errors, List[Time]] = {
+    val sql = anorm.SQL("""SELECT * FROM Time WHERE busId = {busId} ORDER BY dayType, direction, hour, minute""").on(
+      "busId" -> busId
+    )
+
+    try {
+      Database.getMultiple(sql) match {
+        case Left(getTimesErrors) =>
+          Left(getTimesErrors)
+
+        case Right(timeRows) =>
+          val times: List[Time] = timeRows.map {
+            row =>
+              val busId           = row[Int]("Time.busId")
+              val dayTypeString   = row[String]("Time.dayType")
+              val directionString = row[String]("Time.direction")
+              val hour            = row[Int]("Time.hour")
+              val minute          = row[Int]("Time.minute")
+
+              val dayType: DayType     = DayTypes.withName(dayTypeString)
+              val direction: Direction = Directions.withName(directionString)
+
+              Time(busId, dayType, direction, hour, minute)
+          }
+
+          Right(times)
+      }
+    } catch {
+      case t: Throwable =>
+        val errors: Errors = Errors(CommonError.database)
+
+        Log.error(t, "Time.getTimesFromDB", s"""Failed to get times for bus "$busId" from DB!""")
+
+        Left(errors)
+    }
+  }
+
+  def saveTimesToDB(times: List[Time]): Errors = {
+    val insert = """INSERT INTO Time (busId, dayType, direction, hour, minute) VALUES """
+
+    val (values: List[String], parameters: List[NamedParameter]) = times.zipWithIndex.foldLeft(List.empty[String], List.empty[NamedParameter]) {
+      case ((currentValues, currentParameters), (time, index)) =>
+        val value = s"""({busId_$index}, {dayType_$index}, {direction_$index}, {hour_$index}, {minute_$index})"""
+
+        val parameters = List(
+          NamedParameter(s"busId_$index",     time.busId),
+          NamedParameter(s"dayType_$index",   time.dayType.toString),
+          NamedParameter(s"direction_$index", time.direction.toString),
+          NamedParameter(s"hour_$index",      time.hour),
+          NamedParameter(s"minute_$index",    time.minute)
+        )
+
+        (currentValues :+ value) -> (currentParameters ++ parameters)
+    }
+
+    val sql = anorm.SQL(insert + values.mkString(", ")).on(parameters:_*)
+
+    try {
+      Database.insert(sql)
+    } catch {
+      case t: Throwable =>
+        val errors: Errors = Errors(CommonError.database)
+
+        Log.error(t, "Time.saveTimesToDB", s"""Failed to save times "${Json.toJson(times.map(_.toJson))}" to DB!""")
+
+        errors
+    }
+  }
+
   override def toJson(time: Time): JsObject = {
     Json.obj(
       "busId"     -> time.busId,
@@ -93,7 +167,7 @@ trait TimeBase extends Jsonable[Time] {
       case t: Throwable =>
         val errors = Errors(CommonError.invalidData)
 
-        Log.error(t, "Time.fromJson", s"""Failed to create time from "$json"!""", errors)
+        Log.error(t, "Time.fromJson", s"""Failed to create time from "$json"!""")
 
         Left(errors)
     }

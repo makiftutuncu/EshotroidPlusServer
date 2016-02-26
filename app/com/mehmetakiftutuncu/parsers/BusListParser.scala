@@ -2,7 +2,7 @@ package com.mehmetakiftutuncu.parsers
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models.Bus
-import com.mehmetakiftutuncu.utilities.{StringUtils, ConfBase, HttpBase}
+import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, StringUtils}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -24,35 +24,38 @@ trait BusListParserBase {
 
   def getAndParseBusList: Future[Either[Errors, List[Bus]]] = {
     Http.getAsString(Conf.Hosts.eshotHome).map {
-      case Left(errors) => Left(errors)
+      case Left(errors) =>
+        Left(errors)
 
-      case Right(eshotHomeString) => extractBusListSelect(eshotHomeString) match {
-        case Left(extractSelectErrors) => Left(extractSelectErrors)
+      case Right(eshotHomeString) =>
+        extractBusListSelect(eshotHomeString) match {
+          case Left(extractSelectErrors) =>
+            Left(extractSelectErrors)
 
-        case Right(busListSelect) =>
-          busListSelectRegex.findFirstMatchIn(busListSelect).map(_.group(1)) map {
-            busOptionsString =>
-              val busOptionStringList = busOptionsString.split("\\n").collect {
-                case optionString if !optionString.contains("<option value=\"\"></option>") =>
-                  optionString.trim
-              }.toList
+          case Right(busListSelect) =>
+            busListSelectRegex.findFirstMatchIn(busListSelect).map(_.group(1)) map {
+              busOptionsString =>
+                val busOptionStringList = busOptionsString.split("\\n").collect {
+                  case optionString if !optionString.contains("<option value=\"\"></option>") =>
+                    optionString.trim
+                }.toList
 
-              val (parseBusListErrors: Errors, busList: List[Bus]) = busOptionStringList.foldLeft((Errors.empty, List.empty[Bus])) {
-                case ((errors: Errors, busList: List[Bus]), busOptionString: String) =>
-                  extractBusFromOption(busOptionString) match {
-                    case Left(e)    => (errors ++ e, busList)
-                    case Right(bus) => (errors, busList :+ bus)
-                  }
-              }
+                val (parseBusListErrors: Errors, busList: List[Bus]) = busOptionStringList.foldLeft((Errors.empty, List.empty[Bus])) {
+                  case ((errors: Errors, busList: List[Bus]), busOptionString: String) =>
+                    extractBusFromOption(busOptionString) match {
+                      case Left(e)    => (errors ++ e, busList)
+                      case Right(bus) => (errors, busList :+ bus)
+                    }
+                }
 
-              if (parseBusListErrors.nonEmpty) {
-                Left(parseBusListErrors)
-              } else {
-                Right(busList)
-              }
-          } getOrElse {
-            Left(Errors(CommonError.invalidData.reason("Could not extract bus list!")))
-          }
+                if (parseBusListErrors.nonEmpty) {
+                  Left(parseBusListErrors)
+                } else {
+                  Right(busList)
+                }
+            } getOrElse {
+              Left(Errors(CommonError.invalidData.reason("Could not extract bus list!")))
+            }
       }
     }
   }
