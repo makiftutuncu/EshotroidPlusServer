@@ -2,6 +2,7 @@ package com.mehmetakiftutuncu.utilities
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import play.api.Play.current
+import play.api.cache.Cache
 import play.api.http.{HeaderNames, Status, Writeable}
 import play.api.libs.ws.{WSRequest, WSResponse}
 
@@ -31,47 +32,85 @@ trait HttpBase {
     } map(_.right.getOrElse(""))
   }
 
+  private def cacheKey(url: String, data: Map[String, Seq[String]] = Map.empty[String, Seq[String]]): String = {
+    val dataKey: String = data.map { case (key, values) => s"$key=${values.mkString(",")}" }.mkString("&")
+
+    s"$url${if (dataKey.isEmpty) "" else "_" + dataKey}"
+  }
+
   def getAsString(url: String): Future[Either[Errors, String]] = {
-    eshotSessionId.flatMap {
-      sessionId =>
-        get[String](url, sessionId) {
-          wsResponse =>
-            val status: Int = wsResponse.status
+    val key: String = cacheKey(url)
 
-            if (status != Status.OK) {
-              val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+    val pageFromCacheAsOpt: Option[String] = Cache.getAs[String](key)
 
-              Log.error("Http.getAsString", "Received invalid HTTP status!", errors)
+    if (pageFromCacheAsOpt.isDefined) {
+      Log.debug("Http.getAsString", s"""Hooray! Found page for key "$key" on cache.""")
 
-              Left(errors)
-            } else {
-              Right(wsResponse.body)
-            }
-        }
+      Future.successful(Right(pageFromCacheAsOpt.get))
+    } else {
+      Log.debug("Http.getAsString", s"""Did not find page for key "$key" on cache, proxying request.""")
+
+      eshotSessionId.flatMap {
+        sessionId =>
+          get[String](url, sessionId) {
+            wsResponse =>
+              val status: Int = wsResponse.status
+
+              if (status != Status.OK) {
+                val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+
+                Log.error("Http.getAsString", "Received invalid HTTP status!", errors)
+
+                Left(errors)
+              } else {
+                val result: String = wsResponse.body
+
+                Cache.set(key, result, Conf.Cache.cacheTTLInSeconds)
+
+                Right(result)
+              }
+          }
+      }
     }
   }
 
   def postFormAsString(url: String, form: Map[String, Seq[String]]): Future[Either[Errors, String]] = {
-    eshotSessionId.flatMap {
-      sessionId =>
-        post[Map[String, Seq[String]], String](url, sessionId, form) {
-          wsResponse =>
-            val status: Int = wsResponse.status
+    val key: String = cacheKey(url, form)
 
-            if (status != Status.OK) {
-              val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+    val pageFromCacheAsOpt: Option[String] = Cache.getAs[String](key)
 
-              Log.error("Http.postFormAsString", "Received invalid HTTP status!", errors)
+    if (pageFromCacheAsOpt.isDefined) {
+      Log.debug("Http.postFormAsString", s"""Hooray! Found page for key "$key" on cache.""")
 
-              Left(errors)
-            } else {
-              Right(wsResponse.body)
-            }
-        }
+      Future.successful(Right(pageFromCacheAsOpt.get))
+    } else {
+      Log.debug("Http.postFormAsString", s"""Did not find page for key "$key" on cache, proxying request.""")
+
+      eshotSessionId.flatMap {
+        sessionId =>
+          post[Map[String, Seq[String]], String](url, sessionId, form) {
+            wsResponse =>
+              val status: Int = wsResponse.status
+
+              if (status != Status.OK) {
+                val errors = Errors(CommonError.requestFailed.reason(s"""Received invalid HTTP status from "$url"!""").data(status.toString))
+
+                Log.error("Http.postFormAsString", "Received invalid HTTP status!", errors)
+
+                Left(errors)
+              } else {
+                val result: String = wsResponse.body
+
+                Cache.set(key, result, Conf.Cache.cacheTTLInSeconds)
+
+                Right(result)
+              }
+          }
+      }
     }
   }
 
-  def get[R](url: String, sessionId: String)(action: WSResponse => Either[Errors, R]): Future[Either[Errors, R]] = {
+  private def get[R](url: String, sessionId: String)(action: WSResponse => Either[Errors, R]): Future[Either[Errors, R]] = {
     build(url)
       .withHeaders(HeaderNames.COOKIE -> s"$eshotSessionIdCookieName=$sessionId")
       .get().map(wsResponse => action(wsResponse)).recover {
@@ -84,7 +123,7 @@ trait HttpBase {
     }
   }
 
-  def post[B, R](url: String, sessionId: String, body: B)(action: WSResponse => Either[Errors, R])(implicit wrt: Writeable[B]): Future[Either[Errors, R]] = {
+  private def post[B, R](url: String, sessionId: String, body: B)(action: WSResponse => Either[Errors, R])(implicit wrt: Writeable[B]): Future[Either[Errors, R]] = {
     build(url)
       .withHeaders(HeaderNames.COOKIE -> s"$eshotSessionIdCookieName=$sessionId")
       .post(body)(wrt).map(wsResponse => action(wsResponse)).recover {

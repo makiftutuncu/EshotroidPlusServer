@@ -15,7 +15,7 @@ trait BusControllerBase extends ControllerBase {
   protected def BusData: BusDataBase
 
   def list = Action.async {
-    BusData.getBusList map {
+    BusData.getBusListJson map {
       case Left(errors)       => okWithError(errors)
       case Right(busListJson) => okWithJson(busListJson)
     }
@@ -25,7 +25,7 @@ trait BusControllerBase extends ControllerBase {
     if (busId <= 0) {
       futureOkWithError(Errors(CommonError.invalidData.reason("Bus id must be > 0!").data(busId.toString)))
     } else {
-      BusData.getBus(busId) map {
+      BusData.getBusJson(busId) map {
         case Left(errors)   => okWithError(errors)
         case Right(busJson) => okWithJson(busJson)
       }

@@ -17,9 +17,9 @@ object Stop extends StopBase {
 trait StopBase extends Jsonable[Stop] {
   protected def Database: DatabaseBase
 
-  def getStopsFromDB(busId: Int, direction: Direction): Either[Errors, List[Stop]] = {
-    val sql = anorm.SQL("""SELECT * FROM Stop WHERE busId = {busId} AND direction = {direction} ORDER BY id""").on(
-      "busId" -> busId, "direction" -> direction.toString
+  def getStopsFromDB(busId: Int): Either[Errors, List[Stop]] = {
+    val sql = anorm.SQL("""SELECT * FROM Stop WHERE busId = {busId} ORDER BY id""").on(
+      "busId" -> busId
     )
 
     try {
@@ -32,6 +32,7 @@ trait StopBase extends Jsonable[Stop] {
             row =>
               val id        = row[Int]("Stop.id")
               val name      = row[String]("Stop.name")
+              val direction = Directions.withName(row[String]("Stop.direction"))
               val latitude  = row[Double]("Stop.latitude")
               val longitude = row[Double]("Stop.longitude")
 
@@ -44,14 +45,14 @@ trait StopBase extends Jsonable[Stop] {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
 
-        Log.error(t, "Stop.getStopsFromDB", s"""Failed to get stops for bus "$busId" in direction "$direction" from DB!""")
+        Log.error(t, "Stop.getStopsFromDB", s"""Failed to get stops for bus "$busId" from DB!""")
 
         Left(errors)
     }
   }
 
   def saveStopsToDB(stops: List[Stop]): Errors = {
-    val insert = """INSERT INTO Stop (id, name, busId, direction, latitude, longitude) VALUES """
+    val insertPart = """INSERT INTO Stop (id, name, busId, direction, latitude, longitude) VALUES """
 
     val (values: List[String], parameters: List[NamedParameter]) = stops.zipWithIndex.foldLeft(List.empty[String], List.empty[NamedParameter]) {
       case ((currentValues, currentParameters), (stop, index)) =>
@@ -69,10 +70,11 @@ trait StopBase extends Jsonable[Stop] {
         (currentValues :+ value) -> (currentParameters ++ parameters)
     }
 
-    val sql = anorm.SQL(insert + values.mkString(", ")).on(parameters:_*)
+    val deleteSQL = anorm.SQL(s"""DELETE FROM Stop WHERE busId IN (${stops.map(_.busId).toSet.mkString(", ")})""")
+    val insertSQL = anorm.SQL(insertPart + values.mkString(", ")).on(parameters:_*)
 
     try {
-      Database.insert(sql)
+      Database.insert(insertSQL, Option(deleteSQL))
     } catch {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)

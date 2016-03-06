@@ -6,10 +6,8 @@ import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
 import com.mehmetakiftutuncu.utilities.{DatabaseBase, Log}
 import play.api.libs.json.{JsObject, JsValue, Json}
 
-case class Time(busId: Int, dayType: DayType, direction: Direction, hour: Int, minute: Int) extends ModelBase {
+case class Time(busId: Int, dayType: DayType, direction: Direction, time: String) extends ModelBase {
   override def toJson: JsObject = Time.toJson(this)
-
-  def toTimeString: String = f"$hour%02d:$minute%02d"
 }
 
 object Time extends TimeBase {
@@ -19,8 +17,10 @@ object Time extends TimeBase {
 trait TimeBase extends Jsonable[Time] {
   protected def Database: DatabaseBase
 
+  val timeRegex = """([0-2][0-9]):([0-5][0-9])""".r
+
   def getTimesFromDB(busId: Int): Either[Errors, List[Time]] = {
-    val sql = anorm.SQL("""SELECT * FROM Time WHERE busId = {busId} ORDER BY dayType, direction, hour, minute""").on(
+    val sql = anorm.SQL("""SELECT * FROM Time WHERE busId = {busId} ORDER BY dayType, direction, time""").on(
       "busId" -> busId
     )
 
@@ -35,13 +35,12 @@ trait TimeBase extends Jsonable[Time] {
               val busId           = row[Int]("Time.busId")
               val dayTypeString   = row[String]("Time.dayType")
               val directionString = row[String]("Time.direction")
-              val hour            = row[Int]("Time.hour")
-              val minute          = row[Int]("Time.minute")
+              val time            = row[String]("Time.time")
 
               val dayType: DayType     = DayTypes.withName(dayTypeString)
               val direction: Direction = Directions.withName(directionString)
 
-              Time(busId, dayType, direction, hour, minute)
+              Time(busId, dayType, direction, time)
           }
 
           Right(times)
@@ -57,27 +56,27 @@ trait TimeBase extends Jsonable[Time] {
   }
 
   def saveTimesToDB(times: List[Time]): Errors = {
-    val insert = """INSERT INTO Time (busId, dayType, direction, hour, minute) VALUES """
+    val insertPart = """INSERT INTO Time (busId, dayType, direction, time) VALUES """
 
     val (values: List[String], parameters: List[NamedParameter]) = times.zipWithIndex.foldLeft(List.empty[String], List.empty[NamedParameter]) {
       case ((currentValues, currentParameters), (time, index)) =>
-        val value = s"""({busId_$index}, {dayType_$index}, {direction_$index}, {hour_$index}, {minute_$index})"""
+        val value = s"""({busId_$index}, {dayType_$index}, {direction_$index}, {time_$index})"""
 
         val parameters = List(
           NamedParameter(s"busId_$index",     time.busId),
           NamedParameter(s"dayType_$index",   time.dayType.toString),
           NamedParameter(s"direction_$index", time.direction.toString),
-          NamedParameter(s"hour_$index",      time.hour),
-          NamedParameter(s"minute_$index",    time.minute)
+          NamedParameter(s"time_$index",      time.time)
         )
 
         (currentValues :+ value) -> (currentParameters ++ parameters)
     }
 
-    val sql = anorm.SQL(insert + values.mkString(", ")).on(parameters:_*)
+    val deleteSQL = anorm.SQL(s"""DELETE FROM Time WHERE busId IN (${times.map(_.busId).toSet.mkString(", ")})""")
+    val insertSQL = anorm.SQL(insertPart + values.mkString(", ")).on(parameters:_*)
 
     try {
-      Database.insert(sql)
+      Database.insert(insertSQL, Option(deleteSQL))
     } catch {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
@@ -93,8 +92,7 @@ trait TimeBase extends Jsonable[Time] {
       "busId"     -> time.busId,
       "dayType"   -> time.dayType.toString,
       "direction" -> time.direction.toString,
-      "hour"      -> time.hour,
-      "minute"    -> time.minute
+      "time"      -> time.time
     )
   }
 
@@ -103,8 +101,7 @@ trait TimeBase extends Jsonable[Time] {
       val busIdAsOpt     = (json \ "busId").asOpt[Int]
       val dayTypeAsOpt   = (json \ "dayType").asOpt[String]
       val directionAsOpt = (json \ "direction").asOpt[String]
-      val hourAsOpt      = (json \ "hour").asOpt[Int]
-      val minuteAsOpt    = (json \ "minute").asOpt[Int]
+      val timeAsOpt      = (json \ "time").asOpt[String]
 
       val busIdErrors = if (busIdAsOpt.isEmpty) {
         Errors(CommonError.invalidData.reason("Bus id is missing!"))
@@ -130,23 +127,15 @@ trait TimeBase extends Jsonable[Time] {
         Errors.empty
       }
 
-      val hourErrors = if (hourAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Hour is missing!"))
-      } else if (hourAsOpt.get < 0 || hourAsOpt.get > 23) {
-        Errors(CommonError.invalidData.reason("Hour must be in [0, 23]!").data(hourAsOpt.get.toString))
+      val timeErrors = if (timeAsOpt.isEmpty) {
+        Errors(CommonError.invalidData.reason("Time is missing!"))
+      } else if (timeRegex.findFirstIn(timeAsOpt.get).isEmpty) {
+        Errors(CommonError.invalidData.reason("Time is invalid!").data(timeAsOpt.get.toString))
       } else {
         Errors.empty
       }
 
-      val minuteErrors = if (minuteAsOpt.isEmpty) {
-        Errors(CommonError.invalidData.reason("Minute is missing!"))
-      } else if (minuteAsOpt.get < 0 || minuteAsOpt.get > 59) {
-        Errors(CommonError.invalidData.reason("Minute must be in [0, 59]!").data(minuteAsOpt.get.toString))
-      } else {
-        Errors.empty
-      }
-
-      val errors = busIdErrors ++ dayTypeErrors ++ directionErrors ++ hourErrors ++ minuteErrors
+      val errors = busIdErrors ++ dayTypeErrors ++ directionErrors ++ timeErrors
 
       if (errors.nonEmpty) {
         Log.error("Time.fromJson", s"""Failed to create time from "$json"!""", errors)
@@ -157,8 +146,7 @@ trait TimeBase extends Jsonable[Time] {
           busId     = busIdAsOpt.get,
           dayType   = DayTypes.withName(dayTypeAsOpt.get),
           direction = Directions.withName(directionAsOpt.get),
-          hour      = hourAsOpt.get,
-          minute    = minuteAsOpt.get
+          time      = timeAsOpt.get
         )
 
         Right(time)

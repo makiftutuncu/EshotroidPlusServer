@@ -49,21 +49,24 @@ trait DatabaseBase {
     }
   }
 
-  def insert(sql: SimpleSql[Row]): Errors = {
-    withConnection {
+  def insert(insertSQL: SimpleSql[Row], deleteSQL: Option[SimpleSql[Row]] = None): Errors = {
+    withTransaction {
       implicit connection =>
-        sql.withQueryTimeout(Option(timeout)).executeInsert(SqlParser.scalar[Long].*)
+        if (deleteSQL.isDefined) {
+          deleteSQL.get.withQueryTimeout(Option(timeout)).executeUpdate()
+        }
+
+        insertSQL.withQueryTimeout(Option(timeout)).executeInsert(SqlParser.scalar[Long].*)
 
         Errors.empty
     }
   }
 
-  def update         = ???
-  def insertOrUpdate = ???
-  def delete         = ???
-  def apply          = ???
-
   private def withConnection[R](action: Connection => R): R = {
     DB.withConnection(action)
+  }
+
+  private def withTransaction[R](action: Connection => R): R = {
+    DB.withTransaction(action)
   }
 }

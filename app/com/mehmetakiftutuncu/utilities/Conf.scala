@@ -5,6 +5,10 @@ import play.api.Play
 object Conf extends ConfBase
 
 trait ConfBase {
+  object Cache {
+    val cacheTTLInSeconds: Int = getConfInt("eshotroidplus.cache.cacheTTL", 86400)
+  }
+
   object Http {
     val timeoutInSeconds: Int = getConfInt("eshotroidplus.http.timeout", 10)
   }

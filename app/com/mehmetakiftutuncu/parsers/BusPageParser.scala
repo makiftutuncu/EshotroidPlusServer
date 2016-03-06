@@ -4,6 +4,7 @@ import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models._
 import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, StringUtils}
 
+import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
@@ -49,7 +50,24 @@ trait BusPageParserBase {
   private val timesUlStart = """<ul class="timescape">"""
   private val timesUlEnd   = """</ul>"""
   private val timesUlRegex = """<ul.+?>([\s\S]+)<\/ul>""".r
-  private val timeLiRegex  = """<span>(\d{2}):(\d{2})<\/span>""".r
+  private val timeLiRegex  = """<span.*?>(\d{2}):(\d{2})<\/span>""".r
+
+  /* Basically this is a <script> ... </script> with Javascript objects named "pin" in it.
+   * Each pin is a point on the map which when drawn together, constructs a bus' route.
+   *
+   * Each occurrence of "routePointPinRegex" is a pin object. Using "routePointDataRegex" on each occurrence captures
+   * "latitude", "longitude" and "description" of that point respectively with group(1), group(2) and group(3).
+   *
+   * First two are clear. Description however is used to map these points to bus stops. If a description is non-empty and
+   * matches "name" of a bus stop, that point is the location of that bus stop.
+   */
+  private val routePointsScriptStart      = """<script>"""
+  private val routePointsDataStart        = """var markers = [];"""
+  private val routePointsScriptEnd        = """</script>"""
+  private val routePointsScriptRegex      = """<script>([\s\S]+)<\/script>""".r
+  private val routePointPinRegex          = """var pin = \{[\s\S]+?\}""".r
+  private val routePointDataRegex         = """\{[\s\S]+?title: '',[\s\S]+?lat: '([0-9\.]+)'[\s\S]+?lng: '([0-9\.]+)'[\s\S]+?description: '(.*?)'[\s\S]+?\}""".r
+  private val routePointDescriptionRegex  = """<b>(.+)<\/b>""".r
 
   def getAndParseStops(busId: Int, direction: Direction): Future[Either[Errors, List[Stop]]] = {
     getBusPage(busId, direction).map {
@@ -95,23 +113,23 @@ trait BusPageParserBase {
         Left(errors)
 
       case Right(eshotBusPageString) =>
-        val (errors: Errors, timeList: List[Time], _) = (1 to 6).foldLeft((Errors.empty, List.empty[Time], 0)) {
-          case ((errors: Errors, timeList: List[Time], startIndexInPage: Int), currentRun: Int) =>
+        val (errors: Errors, timeSet: Set[Time], _) = (1 to 6).foldLeft((Errors.empty, Set.empty[Time], 0)) {
+          case ((errors: Errors, timeSet: Set[Time], startIndexInPage: Int), currentRun: Int) =>
             if (errors.nonEmpty) {
-              (errors, timeList, startIndexInPage)
+              (errors, timeSet, startIndexInPage)
             } else {
               val (dayType: DayType, direction: Direction) = currentRun match {
                 case 1 => DayTypes.WeekDays -> Directions.Departure
                 case 2 => DayTypes.WeekDays -> Directions.Arrival
                 case 3 => DayTypes.Saturday -> Directions.Departure
                 case 4 => DayTypes.Saturday -> Directions.Arrival
-                case 5 => DayTypes.Sunday -> Directions.Departure
-                case 6 => DayTypes.Sunday -> Directions.Arrival
+                case 5 => DayTypes.Sunday   -> Directions.Departure
+                case 6 => DayTypes.Sunday   -> Directions.Arrival
               }
 
               extractTimesUl(eshotBusPageString, startIndexInPage) match {
                 case Left(extractUlErrors) =>
-                  (errors ++ extractUlErrors, timeList, startIndexInPage)
+                  (errors ++ extractUlErrors, timeSet, startIndexInPage)
 
                 case Right((timesUlString, newStartIndex)) =>
                   timesUlRegex.findFirstMatchIn(timesUlString).map(_.group(1)) map {
@@ -121,21 +139,21 @@ trait BusPageParserBase {
                           liString.trim
                       }.toList
 
-                      val (parseTimesErrors: Errors, times: List[Time]) = timeLiStringList.foldLeft((Errors.empty, List.empty[Time])) {
-                        case ((errors: Errors, times: List[Time]), timeLiString: String) =>
+                      val (parseTimesErrors: Errors, times: Set[Time]) = timeLiStringList.foldLeft((Errors.empty, Set.empty[Time])) {
+                        case ((errors: Errors, times: Set[Time]), timeLiString: String) =>
                           extractTimeFromLi(timeLiString, busId, dayType, direction) match {
                             case Left(e)     => (errors ++ e, times)
-                            case Right(time) => (errors, times :+ time)
+                            case Right(time) => (errors, times + time)
                           }
                       }
 
                       if (parseTimesErrors.nonEmpty) {
-                        (errors ++ parseTimesErrors, timeList, newStartIndex)
+                        (errors ++ parseTimesErrors, timeSet, newStartIndex)
                       } else {
-                        (errors, timeList ++ times, newStartIndex)
+                        (errors, timeSet ++ times, newStartIndex)
                       }
                   } getOrElse {
-                    (errors + CommonError.invalidData.reason("Could not extract times!"), timeList, newStartIndex)
+                    (errors + CommonError.invalidData.reason("Could not extract times!"), timeSet, newStartIndex)
                   }
               }
             }
@@ -144,7 +162,46 @@ trait BusPageParserBase {
         if (errors.nonEmpty) {
           Left(errors)
         } else {
-          Right(timeList)
+          Right(timeSet.toList.sortBy(t => (t.dayType.toString, t.direction.toString, t.time)))
+        }
+    }
+  }
+
+  def getAndParseRoutePoints(busId: Int, direction: Direction): Future[Either[Errors, List[RoutePoint]]] = {
+    getBusPage(busId, direction).map {
+      case Left(errors) =>
+        Left(errors)
+
+      case Right(eshotBusPageString) =>
+        extractRoutePointsScript(eshotBusPageString) match {
+          case Left(extractRoutePointsScriptErrors) =>
+            Left(extractRoutePointsScriptErrors)
+
+          case Right(routePointsScriptString) =>
+            routePointsScriptRegex.findFirstMatchIn(routePointsScriptString).map(_.group(1)) map {
+              routePointsPinStrings =>
+                val (parseRoutePointsErrors: Errors, routePoints: Set[RoutePoint]) = routePointPinRegex.findAllIn(routePointsPinStrings).foldLeft((Errors.empty, Set.empty[RoutePoint])) {
+                  case ((routePointsErrors: Errors, routePoints: Set[RoutePoint]), routePointPinString: String) =>
+                    extractRoutePointFromPin(routePointPinString, busId, direction) match {
+                      case Left(e) =>
+                        (routePointsErrors ++ e, routePoints)
+
+                      case Right(routePoint) if routePoints.exists(r => r.location == routePoint.location && r.description.nonEmpty) =>
+                        (routePointsErrors, routePoints)
+
+                      case Right(routePoint) =>
+                        (routePointsErrors, routePoints + routePoint)
+                    }
+                }
+
+                if (parseRoutePointsErrors.nonEmpty) {
+                  Left(parseRoutePointsErrors)
+                } else {
+                  Right(routePoints.toList.sortBy(p => (p.direction.toString, p.location.latitude, p.location.longitude)))
+                }
+            } getOrElse {
+              Left(Errors(CommonError.invalidData.reason("Could not extract route points!")))
+            }
         }
     }
   }
@@ -220,12 +277,60 @@ trait BusPageParserBase {
         } else if (Try(minuteString.toInt).toOption.exists(h => h < 0 && h > 59)) {
           Left(Errors(CommonError.invalidData.reason("Received invalid minute!").data(minuteString)))
         } else {
-          val time = Time(busId, dayType, direction, hourString.toInt, minuteString.toInt)
+          val time = Time(busId, dayType, direction, f"${hourString.toInt}%02d:${minuteString.toInt}%02d")
 
           Right(time)
         }
     } getOrElse {
       Left(Errors(CommonError.invalidData.reason("Received invalid time li string!").data(timeLiString)))
+    }
+  }
+
+  @tailrec private def extractRoutePointsScript(eshotBusPageString: String): Either[Errors, String] = {
+    val startIndex = eshotBusPageString.indexOf(routePointsScriptStart)
+
+    if (startIndex < 0) {
+      Left(Errors(CommonError.invalidData.reason("Could not find starting point of route points!")))
+    } else {
+      val dataStartIndex = eshotBusPageString.indexOf(routePointsDataStart, startIndex)
+      val endIndex       = eshotBusPageString.indexOf(routePointsScriptEnd, startIndex)
+
+      if (dataStartIndex > 0 && endIndex > 0 && endIndex > dataStartIndex) {
+        val routePointsScript = eshotBusPageString.substring(startIndex, endIndex + routePointsScriptEnd.length)
+
+        Right(routePointsScript)
+      } else if (dataStartIndex < 0) {
+        Left(Errors(CommonError.invalidData.reason("Could not find starting point of route points!")))
+      } else if (endIndex < 0) {
+        Left(Errors(CommonError.invalidData.reason("Could not find ending point of route points!")))
+      } else {
+        // We found a <script> tag but it is not the one we wanted (next phrase in it was not "routePointsDataStart")
+        extractRoutePointsScript(eshotBusPageString.substring(startIndex))
+      }
+    }
+  }
+
+  private def extractRoutePointFromPin(routePointPinString: String, busId: Int, direction: Direction): Either[Errors, RoutePoint] = {
+    routePointDataRegex.findFirstMatchIn(routePointPinString) map {
+      routeMatch =>
+        val (latitudeString: String, longitudeString: String, rawDescription: String) = (routeMatch.group(1), routeMatch.group(2), routeMatch.group(3))
+
+        if (Try(latitudeString.toDouble).isFailure) {
+          Left(Errors(CommonError.invalidData.reason("Received invalid latitude!").data(latitudeString)))
+        } else if (Try(longitudeString.toDouble).isFailure) {
+          Left(Errors(CommonError.invalidData.reason("Received invalid longitude!").data(longitudeString)))
+        } else {
+          val latitude: Double  = latitudeString.toDouble
+          val longitude: Double = longitudeString.toDouble
+
+          val sanitizedDescription = StringUtils.sanitizeHtml(rawDescription, capitalizeEachWord = false)
+
+          val description = routePointDescriptionRegex.findFirstMatchIn(sanitizedDescription).map(_.group(1)).getOrElse("")
+
+          Right(RoutePoint(busId, direction, description, Location(latitude, longitude)))
+        }
+    } getOrElse {
+      Left(Errors(CommonError.invalidData.reason("Received invalid route point pin string!").data(routePointPinString)))
     }
   }
 }

@@ -3,7 +3,9 @@ package com.mehmetakiftutuncu.data
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models._
 import com.mehmetakiftutuncu.parsers.{BusListParserBase, BusPageParserBase}
-import com.mehmetakiftutuncu.utilities.{CacheBase, Log}
+import com.mehmetakiftutuncu.utilities.{ConfBase, Log}
+import play.api.Play.current
+import play.api.cache.Cache
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -13,7 +15,8 @@ object BusData extends BusDataBase {
   override protected def Bus: BusBase                     = com.mehmetakiftutuncu.models.Bus
   override protected def BusListParser: BusListParserBase = com.mehmetakiftutuncu.parsers.BusListParser
   override protected def BusPageParser: BusPageParserBase = com.mehmetakiftutuncu.parsers.BusPageParser
-  override protected def Cache: CacheBase                 = com.mehmetakiftutuncu.utilities.Cache
+  override protected def Conf: ConfBase                   = com.mehmetakiftutuncu.utilities.Conf
+  override protected def RoutePoint: RoutePointBase       = com.mehmetakiftutuncu.models.RoutePoint
   override protected def Stop: StopBase                   = com.mehmetakiftutuncu.models.Stop
   override protected def Time: TimeBase                   = com.mehmetakiftutuncu.models.Time
 }
@@ -22,17 +25,20 @@ trait BusDataBase {
   protected def Bus: BusBase
   protected def BusListParser: BusListParserBase
   protected def BusPageParser: BusPageParserBase
-  protected def Cache: CacheBase
+  protected def Conf: ConfBase
+  protected def RoutePoint: RoutePointBase
   protected def Stop: StopBase
   protected def Time: TimeBase
 
-  val busListCacheKey: String                                 = "busList"
-  def completeBusDataCacheKey(id: Int): String                = s"bus.$id.completeData"
-  def stopsCacheKey(busId: Int, direction: Direction): String = s"bus.stops.$busId.$direction"
-  def timesCacheKey(busId: Int): String                       = s"bus.times.$busId"
+  val busListCacheKey: String                   = "busList"
+  def everythingForBusCacheKey(id: Int): String = s"bus.everything.$id"
+  def busCacheKey(id: Int): String              = s"bus.$id"
+  def timesCacheKey(busId: Int): String         = s"bus.times.$busId"
+  def stopsCacheKey(busId: Int): String         = s"bus.stops.$busId"
+  def routePointsCacheKey(busId: Int): String   = s"bus.routePoints.$busId"
 
-  def getBusList: Future[Either[Errors, JsValue]] = {
-    Cache.getJson(busListCacheKey) match {
+  def getBusListJson: Future[Either[Errors, JsValue]] = {
+    Cache.getAs[JsValue](busListCacheKey) match {
       case Some(busListFromCache) =>
         Log.debug("BusData.getBusList", "Awesome! Found bus list on cache.")
 
@@ -43,8 +49,6 @@ trait BusDataBase {
 
         Bus.getBusListFromDB match {
           case Left(getBusListFromDBErrors) =>
-            Log.error("BusData.getBusList", "Failed to get bus list from database!", getBusListFromDBErrors)
-
             Future.successful(Left(getBusListFromDBErrors))
 
           case Right(busListFromDB) =>
@@ -77,7 +81,7 @@ trait BusDataBase {
                   val busListJson: JsArray = Json.toJson(finalBusList.map(_.toJson)).as[JsArray]
 
                   Log.debug("BusData.getBusList", "Caching bus list.")
-                  Cache.setJson(busListCacheKey, busListJson)
+                  Cache.set(busListCacheKey, busListJson)
 
                   Right(busListJson)
                 }
@@ -86,63 +90,120 @@ trait BusDataBase {
     }
   }
 
-  def getBus(id: Int): Future[Either[Errors, JsValue]] = {
-    Cache.getJson(completeBusDataCacheKey(id)) match {
-      case Some(busFromCache) =>
-        Log.debug("BusData.getBus", s"Awesome! Found complete data for bus $id on cache.")
+  def getBusJson(id: Int): Future[Either[Errors, JsValue]] = {
+    Cache.getAs[JsValue](everythingForBusCacheKey(id)) match {
+      case Some(busFromCache: JsValue) =>
+        Log.debug("BusData.getEverythingForBus", s"Awesome! Found all data for bus $id on cache.")
 
         Future.successful(Right(busFromCache))
 
       case None =>
-        Log.debug("BusData.getBus", s"Did not find complete data for bus $id on cache.")
+        Log.debug("BusData.getEverythingForBus", s"Did not find all data for bus $id on cache.")
 
-        Bus.getBusFromDB(id) match {
-          case Left(getBusFromDBErrors) =>
-            Log.error("BusData.getBus", s"Failed to get bus $id from database!", getBusFromDBErrors)
+        getBus(id) match {
+          case Left(getBusErrors: Errors) =>
+            Future.successful(Left(getBusErrors))
 
-            Future.successful(Left(getBusFromDBErrors))
-
-          case Right(None) =>
-            Log.error("BusData.getBus", s"Bus $id is not found on database!")
-
-            Future.successful(Left(Errors(CommonError("notFound").reason("Bus is not found!").data(id.toString))))
-
-          case Right(Some(bus)) =>
-            Log.debug("BusData.getBus", s"Yay! Bus $id is found on database!")
-
-            val busJson = bus.toJson
-
-            val errorsOrTimes = getTimes(id)
+          case Right(bus: Bus) =>
+            val errorsOrTimes: Future[Either[Errors, List[Time]]] = getTimes(id)
 
             errorsOrTimes.flatMap {
-              case Left(timesErrors) =>
+              case Left(timesErrors: Errors) =>
                 Future.successful(Left(timesErrors))
 
-              case Right(timesJson) =>
-                val finalTimesJson = Json.obj("times" -> timesJson)
+              case Right(times: List[Time]) =>
+                val errorsOrStops: Future[Either[Errors, List[Stop]]] = getStops(id)
 
-                val errorsOrStopsFromDeparture = getStops(id, Directions.Departure)
+                errorsOrStops.flatMap {
+                  case Left(getStopsErrors: Errors) =>
+                    Future.successful(Left(getStopsErrors))
 
-                errorsOrStopsFromDeparture.flatMap {
-                  case Left(stopsFromDepartureErrors) =>
-                    Future.successful(Left(stopsFromDepartureErrors))
+                  case Right(stops: List[Stop]) =>
+                    val errorsOrRoutePoints: Future[Either[Errors, List[RoutePoint]]] = getRoutePoints(id)
 
-                  case Right(stopsFromDepartureJson) =>
-                    val errorsOrStopsFromArrival = getStops(id, Directions.Arrival)
+                    errorsOrRoutePoints.map {
+                      case Left(getRoutePointsErrors: Errors) =>
+                        Left(getRoutePointsErrors)
 
-                    errorsOrStopsFromArrival.map {
-                      case Left(stopsFromArrivalErrors) =>
-                        Left(stopsFromArrivalErrors)
+                      case Right(routePoints: List[RoutePoint]) =>
+                        // Get actual locations of stops
+                        val finalStops = stops.map(s => routePoints.find(r => r.description == s.name && r.direction == s.direction).map(r => s.copy(location = r.location)).getOrElse(s))
 
-                      case Right(stopsFromArrivalJson) =>
-                        val finalStopsJson = Json.obj("stops" -> (stopsFromDepartureJson ++ stopsFromArrivalJson))
+                        val saveTimesErrors = {
+                          Log.debug("BusData.getEverythingForBus", s"Saving times of bus $id to database.")
 
-                        val completeBusData = busJson ++ finalTimesJson ++ finalStopsJson
+                          Time.saveTimesToDB(times)
+                        }
 
-                        Log.debug("BusData.getBus", s"Caching complete data for bus $id")
-                        Cache.setJson(completeBusDataCacheKey(id), completeBusData)
+                        val saveStopsErrors = if (saveTimesErrors.isEmpty) {
+                          Log.debug("BusData.getEverythingForBus", s"Saving stops of bus $id to database.")
 
-                        Right(completeBusData)
+                          Stop.saveStopsToDB(finalStops)
+                        } else {
+                          saveTimesErrors
+                        }
+
+                        val saveRoutePointsErrors = if (saveStopsErrors.isEmpty) {
+                          Log.debug("BusData.getEverythingForBus", s"Saving route points of bus $id to database.")
+
+                          RoutePoint.saveRoutePointsToDB(routePoints)
+                        } else {
+                          saveStopsErrors
+                        }
+
+                        if (saveRoutePointsErrors.nonEmpty) {
+                          Left(saveRoutePointsErrors)
+                        } else {
+                          val busJson: JsObject = bus.toJson
+
+                          val weekDaysTimes: List[Time] = times.filter(_.dayType == DayTypes.WeekDays)
+                          val saturdayTimes: List[Time] = times.filter(_.dayType == DayTypes.Saturday)
+                          val sundayTimes: List[Time]   = times.filter(_.dayType == DayTypes.Sunday)
+
+                          val timesJson: JsObject = Json.obj(
+                            "times" -> Json.obj(
+                              "weekDays" -> Json.obj(
+                                "departure" -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray],
+                                "arrival"   -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray]
+                              ),
+                              "saturday" -> Json.obj(
+                                "departure" -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray],
+                                "arrival"   -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray]
+                              ),
+                              "sunday" -> Json.obj(
+                                "departure" -> Json.toJson(sundayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray],
+                                "arrival"   -> Json.toJson(sundayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray]
+                              )
+                            )
+                          )
+
+                          val stopsFromDeparture = finalStops.filter(_.direction == Directions.Departure)
+                          val stopsFromArrival   = finalStops.filter(_.direction == Directions.Arrival)
+
+                          val stopsJson: JsObject = Json.obj(
+                            "stops" -> Json.obj(
+                              "departure" -> Json.toJson(stopsFromDeparture.map(_.toJson - "busId" - "direction")).as[JsArray],
+                              "arrival"   -> Json.toJson(stopsFromArrival.map(_.toJson - "busId" - "direction")).as[JsArray]
+                            )
+                          )
+
+                          val routePointsFromDeparture = routePoints.filter(_.direction == Directions.Departure)
+                          val routePointsFromArrival   = routePoints.filter(_.direction == Directions.Arrival)
+
+                          val routePointsJson: JsObject = Json.obj(
+                            "route" -> Json.obj(
+                              "departure" -> Json.toJson(routePointsFromDeparture.map(_.location.toJson)).as[JsArray],
+                              "arrival"   -> Json.toJson(routePointsFromArrival.map(_.location.toJson)).as[JsArray]
+                            )
+                          )
+
+                          val completeBusData: JsObject = busJson ++ timesJson ++ stopsJson ++ routePointsJson
+
+                          Log.debug("BusData.getEverythingForBus", s"Caching complete data for bus $id")
+                          Cache.set(everythingForBusCacheKey(id), completeBusData)
+
+                          Right(completeBusData)
+                        }
                     }
                 }
             }
@@ -150,77 +211,47 @@ trait BusDataBase {
     }
   }
 
-  def getStops(busId: Int, direction: Direction): Future[Either[Errors, JsObject]] = {
-    Cache.getJson(stopsCacheKey(busId, direction)) match {
-      case Some(stopsFromCache) =>
-        Log.debug("BusData.getStops", s"Awesome! Found stops of bus $busId from $direction on cache.")
+  private def getBus(id: Int): Either[Errors, Bus] = {
+    Cache.getAs[Bus](busCacheKey(id)) match {
+      case Some(busFromCache: Bus) =>
+        Log.debug("BusData.getBus", s"Awesome! Found bus $id on cache.")
 
-        Future.successful(Right(stopsFromCache.as[JsObject]))
+        Right(busFromCache)
 
       case None =>
-        Log.debug("BusData.getStops", s"Did not find stops of bus $busId from $direction on cache.")
+        Log.debug("BusData.getBus", s"Did not find bus $id on cache.")
 
-        Stop.getStopsFromDB(busId, direction) match {
-          case Left(getStopsFromDBErrors) =>
-            Log.error("BusData.getStops", s"Failed to get stops of bus $busId from $direction from database!", getStopsFromDBErrors)
+        Bus.getBusFromDB(id) match {
+          case Left(getBusFromDBErrors: Errors) =>
+            Left(getBusFromDBErrors)
 
-            Future.successful(Left(getStopsFromDBErrors))
+          case Right(None) =>
+            Log.error("BusData.getBus", s"Bus $id is not found on database!")
 
-          case Right(stopsFromDB) =>
-            val futureErrorsOrStops: Future[Either[Errors, List[Stop]]] = if (stopsFromDB.isEmpty) {
-              Log.debug("BusData.getStops", s"Oh oh! No stops of bus $busId from $direction on database. Let's download!")
+            Left(Errors(CommonError("notFound").reason("Bus is not found!").data(id.toString)))
 
-              BusPageParser.getAndParseStops(busId, direction)
-            } else {
-              Log.debug("BusData.getStops", s"Cool! Found stops of bus $busId from $direction on database.")
+          case Right(Some(bus: Bus)) =>
+            Log.debug("BusData.getBus", s"Yay! Bus $id is found on database.")
 
-              Future.successful(Right(stopsFromDB))
-            }
+            Cache.set(busCacheKey(id), bus, Conf.Cache.cacheTTLInSeconds)
 
-            futureErrorsOrStops.map {
-              case Left(errors) =>
-                Left(errors)
-
-              case Right(finalStops) =>
-                val saveErrors = if (stopsFromDB.isEmpty) {
-                  Log.debug("BusData.getStops", s"Saving stops of bus $busId from $direction to database.")
-
-                  Stop.saveStopsToDB(finalStops)
-                } else {
-                  Errors.empty
-                }
-
-                if (saveErrors.nonEmpty) {
-                  Left(saveErrors)
-                } else {
-                  val stopsJson: JsObject = Json.obj(
-                    direction.toString.toLowerCase -> Json.toJson(finalStops.map(_.toJson - "busId" - "direction")).as[JsArray]
-                  )
-
-                  Log.debug("BusData.getStops", s"Caching stops of bus $busId from $direction.")
-                  Cache.setJson(stopsCacheKey(busId, direction), stopsJson)
-
-                  Right(stopsJson)
-                }
-            }
+            Right(bus)
         }
     }
   }
 
-  def getTimes(busId: Int): Future[Either[Errors, JsObject]] = {
-    Cache.getJson(timesCacheKey(busId)) match {
+  private def getTimes(busId: Int): Future[Either[Errors, List[Time]]] = {
+    Cache.getAs[List[Time]](timesCacheKey(busId)) match {
       case Some(timesFromCache) =>
         Log.debug("BusData.getTimes", s"Awesome! Found times of bus $busId on cache.")
 
-        Future.successful(Right(timesFromCache.as[JsObject]))
+        Future.successful(Right(timesFromCache))
 
       case None =>
         Log.debug("BusData.getTimes", s"Did not find times of bus $busId on cache.")
 
         Time.getTimesFromDB(busId) match {
           case Left(getTimesFromDBErrors) =>
-            Log.error("BusData.getTimes", s"Failed to get times of bus $busId from database!", getTimesFromDBErrors)
-
             Future.successful(Left(getTimesFromDBErrors))
 
           case Right(timesFromDB) =>
@@ -239,41 +270,101 @@ trait BusDataBase {
                 Left(errors)
 
               case Right(finalTimes) =>
-                val saveErrors = if (timesFromDB.isEmpty) {
-                  Log.debug("BusData.getTimes", s"Saving times of bus $busId to database.")
+                Cache.set(timesCacheKey(busId), finalTimes, Conf.Cache.cacheTTLInSeconds)
 
-                  Time.saveTimesToDB(finalTimes)
-                } else {
-                  Errors.empty
-                }
+                Right(finalTimes)
+            }
+        }
+    }
+  }
 
-                if (saveErrors.nonEmpty) {
-                  Left(saveErrors)
-                } else {
-                  val weekDaysTimes: List[Time] = finalTimes.filter(_.dayType == DayTypes.WeekDays)
-                  val saturdayTimes: List[Time] = finalTimes.filter(_.dayType == DayTypes.Saturday)
-                  val sundayTimes: List[Time]   = finalTimes.filter(_.dayType == DayTypes.Sunday)
+  private def getStops(busId: Int): Future[Either[Errors, List[Stop]]] = {
+    Cache.getAs[List[Stop]](stopsCacheKey(busId)) match {
+      case Some(stopsFromCache) =>
+        Log.debug("BusData.getStops", s"Awesome! Found stops of bus $busId on cache.")
 
-                  val timesJson: JsObject = Json.obj(
-                    "weekDays" -> Json.obj(
-                      "departure" -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Departure).map(_.toTimeString)).as[JsArray],
-                      "arrival"   -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Departure).map(_.toTimeString)).as[JsArray]
-                    ),
-                    "saturday" -> Json.obj(
-                      "departure" -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Departure).map(_.toTimeString)).as[JsArray],
-                      "arrival"   -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Departure).map(_.toTimeString)).as[JsArray]
-                    ),
-                    "sunday" -> Json.obj(
-                      "departure" -> Json.toJson(sundayTimes.filter(_.direction == Directions.Departure).map(_.toTimeString)).as[JsArray],
-                      "arrival"   -> Json.toJson(sundayTimes.filter(_.direction == Directions.Departure).map(_.toTimeString)).as[JsArray]
-                    )
-                  )
+        Future.successful(Right(stopsFromCache))
 
-                  Log.debug("BusData.getTimes", s"Caching times of bus $busId.")
-                  Cache.setJson(timesCacheKey(busId), timesJson)
+      case None =>
+        Log.debug("BusData.getStops", s"Did not find stops of bus $busId on cache.")
 
-                  Right(timesJson)
-                }
+        Stop.getStopsFromDB(busId) match {
+          case Left(getStopsFromDBErrors) =>
+            Future.successful(Left(getStopsFromDBErrors))
+
+          case Right(stopsFromDB) =>
+            if (stopsFromDB.isEmpty) {
+              Log.debug("BusData.getStops", s"Oh oh! No stops of bus $busId on database. Let's download!")
+
+              BusPageParser.getAndParseStops(busId, Directions.Departure).flatMap {
+                case Left(getStopsFromDepartureErrors) =>
+                  Future.successful(Left(getStopsFromDepartureErrors))
+
+                case Right(stopsFromDeparture) =>
+                  BusPageParser.getAndParseStops(busId, Directions.Arrival) map {
+                    case Left(getStopsFromArrivalErrors) =>
+                      Left(getStopsFromArrivalErrors)
+
+                    case Right(stopsFromArrival) =>
+                      val stops = stopsFromDeparture ++ stopsFromArrival
+
+                      Cache.set(stopsCacheKey(busId), stops, Conf.Cache.cacheTTLInSeconds)
+
+                      Right(stops)
+                  }
+              }
+            } else {
+              Log.debug("BusData.getStops", s"Cool! Found stops of bus $busId on database.")
+
+              Cache.set(stopsCacheKey(busId), stopsFromDB, Conf.Cache.cacheTTLInSeconds)
+
+              Future.successful(Right(stopsFromDB))
+            }
+        }
+    }
+  }
+
+  private def getRoutePoints(busId: Int): Future[Either[Errors, List[RoutePoint]]] = {
+    Cache.getAs[List[RoutePoint]](routePointsCacheKey(busId)) match {
+      case Some(routePointsFromCache) =>
+        Log.debug("BusData.getRoutePoints", s"Awesome! Found route points of bus $busId on cache.")
+
+        Future.successful(Right(routePointsFromCache))
+
+      case None =>
+        Log.debug("BusData.getRoutePoints", s"Did not find route points of bus $busId on cache.")
+
+        RoutePoint.getRoutePointsFromDB(busId) match {
+          case Left(getRoutePointsFromDBErrors) =>
+            Future.successful(Left(getRoutePointsFromDBErrors))
+
+          case Right(routePointsFromDB) =>
+            if (routePointsFromDB.isEmpty) {
+              Log.debug("BusData.getRoutePoints", s"Oh oh! No route points of bus $busId on database. Let's download!")
+
+              BusPageParser.getAndParseRoutePoints(busId, Directions.Departure) flatMap {
+                case Left(getRoutePointsFromDepartureErrors) =>
+                  Future.successful(Left(getRoutePointsFromDepartureErrors))
+
+                case Right(routePointsFromDeparture) =>
+                  BusPageParser.getAndParseRoutePoints(busId, Directions.Arrival) map {
+                    case Left(getRoutePointsFromArrivalErrors) =>
+                      Left(getRoutePointsFromArrivalErrors)
+
+                    case Right(routePointsFromArrival) =>
+                      val routePoints = routePointsFromDeparture ++ routePointsFromArrival
+
+                      Cache.set(routePointsCacheKey(busId), routePoints, Conf.Cache.cacheTTLInSeconds)
+
+                      Right(routePoints)
+                  }
+              }
+            } else {
+              Log.debug("BusData.getRoutePoints", s"Cool! Found route points of bus $busId on database.")
+
+              Cache.set(routePointsCacheKey(busId), routePointsFromDB, Conf.Cache.cacheTTLInSeconds)
+
+              Future.successful(Right(routePointsFromDB))
             }
         }
     }

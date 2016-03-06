@@ -47,7 +47,7 @@ trait BusBase extends Jsonable[Bus] {
   }
 
   def saveBusListToDB(busList: List[Bus]): Errors = {
-    val insert = """INSERT INTO Bus (id, departure, arrival) VALUES """
+    val insertPart = """INSERT INTO Bus (id, departure, arrival) VALUES """
 
     val (values: List[String], parameters: List[NamedParameter]) = busList.zipWithIndex.foldLeft(List.empty[String], List.empty[NamedParameter]) {
       case ((currentValues, currentParameters), (bus, index)) =>
@@ -62,10 +62,11 @@ trait BusBase extends Jsonable[Bus] {
         (currentValues :+ value) -> (currentParameters ++ parameters)
     }
 
-    val sql = anorm.SQL(insert + values.mkString(", ")).on(parameters:_*)
+    val deleteSQL = anorm.SQL("""DELETE FROM Bus""")
+    val insertSQL = anorm.SQL(insertPart + values.mkString(", ")).on(parameters:_*)
 
     try {
-      Database.insert(sql)
+      Database.insert(insertSQL, Option(deleteSQL))
     } catch {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
@@ -107,7 +108,8 @@ trait BusBase extends Jsonable[Bus] {
   }
 
   def saveBusToDB(bus: Bus): Errors = {
-    val sql = anorm.SQL(
+    val deleteSQL = anorm.SQL("""DELETE FROM Bus WHERE id = {id}""").on("id" -> bus.id)
+    val insertSQL = anorm.SQL(
       """
         |INSERT INTO Bus (id, departure, arrival) VALUES
         |({id}, {departure}, {arrival})
@@ -115,7 +117,7 @@ trait BusBase extends Jsonable[Bus] {
     ).on("id" -> bus.id, "departure" -> bus.departure, "arrival" -> bus.arrival)
 
     try {
-      Database.insert(sql)
+      Database.insert(insertSQL, Option(deleteSQL))
     } catch {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
