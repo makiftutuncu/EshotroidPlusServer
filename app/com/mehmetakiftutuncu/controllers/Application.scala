@@ -5,6 +5,6 @@ import play.api.mvc._
 
 class Application extends ControllerBase {
   def test = Action {
-    okWithText("Hello world!")
+    okWithText("Eshotroid+ Server is up and running!")
   }
 }
