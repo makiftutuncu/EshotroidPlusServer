@@ -1,5 +1,7 @@
 package com.mehmetakiftutuncu.utilities
 
+import java.util.concurrent.TimeUnit
+
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import play.api.Play.current
 import play.api.cache.Cache
@@ -8,6 +10,7 @@ import play.api.libs.ws.{WSRequest, WSResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 import scala.util.matching.Regex
 
 object Http extends HttpBase {
@@ -139,6 +142,6 @@ trait HttpBase {
   }
 
   private def build(url: String): WSRequest = {
-    WSBuilder.url(url).withRequestTimeout(Conf.Http.timeoutInSeconds.toLong * 1000)
+    WSBuilder.url(url).withRequestTimeout(Duration(Conf.Http.timeoutInSeconds.toLong, TimeUnit.SECONDS))
   }
 }
