@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Eshotroid+ Server by mehmetakiftutuncu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Eshotroid+ Server</h1>
+      <h2 class="project-tagline">A server application providing information about public buses in İzmir, Turkey - https://eshotroidplusserver.herokuapp.com</h2>
+      <a href="https://github.com/mehmetakiftutuncu/EshotroidPlusServer" class="btn">View on GitHub</a>
+      <a href="https://github.com/mehmetakiftutuncu/EshotroidPlusServer/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/mehmetakiftutuncu/EshotroidPlusServer/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="eshotroid-server" class="anchor" href="#eshotroid-server" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Eshotroid+ Server</h1>
+
+<p>Welcome to Eshotroid+ Server!</p>
+
+<p>This is a server application providing information about public buses in İzmir, Turkey which are governed by <a href="http://www.eshot.gov.tr"><strong>Eshot</strong></a>. It's purpose is to serve this information in Json format via a very simple RESTful API. There <em>will be</em> an Android application communicating with this server at <a href="https://github.com/mehmetakiftutuncu/EshotroidPlusAndroid"><strong>Eshotroid+ Android</strong></a>.</p>
+
+<p>Eshotroid+ Server will run at <a href="https://eshotroidplusserver.herokuapp.com"><strong>Eshotroid+ Server on Heroku</strong></a>.</p>
+
+<h2>
+<a id="disclaimer" class="anchor" href="#disclaimer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Disclaimer</h2>
+
+<p>This application is developed as a hobby and <strong>means absolutely no harm to Eshot</strong>. It only serves information that is already available on <a href="http://www.eshot.gov.tr"><strong>Eshot's website</strong></a> in a format that is easier for other applications to use.</p>
+
+<h2>
+<a id="technical-details" class="anchor" href="#technical-details" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Technical Details</h2>
+
+<p>Eshotroid+ Server application is developed using <a href="https://www.playframework.com/"><strong>Play Framework</strong></a> and <a href="http://www.scala-lang.org/"><strong>Scala</strong></a>. It runs on <a href="https://www.heroku.com"><strong>Heroku</strong></a> and has a simple <a href="https://www.mysql.com"><strong>MySQL</strong></a> database for data persistence. It utilizes <a href="https://www.playframework.com/documentation/2.5.x/ScalaWS"><strong>WS</strong></a> for making HTTP requests.</p>
+
+<h2>
+<a id="api-reference" class="anchor" href="#api-reference" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>API Reference</h2>
+
+<p>All requests use HTTP <code>GET</code> method. All responses will be <code>HTTP 200 OK</code> with <code>Content-Type: application/json</code>, including errors.</p>
+
+<p>An example success response:</p>
+
+<div class="highlight highlight-source-js"><pre>{
+  <span class="pl-s"><span class="pl-pds">"</span>success<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c">/* object or array */</span>
+}</pre></div>
+
+<p>An example error response:</p>
+
+<div class="highlight highlight-source-js"><pre>{
+  <span class="pl-s"><span class="pl-pds">"</span>errors<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-c">/* one or more errors */</span>]
+}</pre></div>
+
+<h2>
+<a id="bus-list-api-buslist" class="anchor" href="#bus-list-api-buslist" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bus List API <code>/bus/list</code>
+</h2>
+
+<p>This API returns the list of buses available.</p>
+
+<div class="highlight highlight-source-js"><pre>{
+  <span class="pl-s"><span class="pl-pds">"</span>success<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+    {
+      <span class="pl-s"><span class="pl-pds">"</span>id<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">5</span>,
+      <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Narlıdere<span class="pl-pds">"</span></span>,
+      <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Üçkuyular İskele<span class="pl-pds">"</span></span>
+    }
+    <span class="pl-c">/* more objects */</span>
+  ]
+}</pre></div>
+
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id of the bus which is the bus number</td>
+</tr>
+<tr>
+<td>departure</td>
+<td>Name of the location from which bus' route starts</td>
+</tr>
+<tr>
+<td>arrival</td>
+<td>Name of the location from which bus' route end</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="bus-details-api-busid" class="anchor" href="#bus-details-api-busid" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bus Details API <code>/bus/{id}</code>
+</h2>
+
+<p>This API returns all the information about bus whose id is <code>{id}</code>.</p>
+
+<div class="highlight highlight-source-js"><pre>{
+  <span class="pl-s"><span class="pl-pds">"</span>success<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+    <span class="pl-s"><span class="pl-pds">"</span>id<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">169</span>,
+    <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Balçova<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Konak<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>times<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+      <span class="pl-s"><span class="pl-pds">"</span>weekDays<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>06:00<span class="pl-pds">"</span></span> <span class="pl-c">/* , more values */</span>],
+        <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>06:10<span class="pl-pds">"</span></span> <span class="pl-c">/* , more values */</span>]
+      },
+      <span class="pl-s"><span class="pl-pds">"</span>saturday<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>06:00<span class="pl-pds">"</span></span> <span class="pl-c">/* , more values */</span>],
+        <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>06:15<span class="pl-pds">"</span></span> <span class="pl-c">/* , more values */</span>]
+      },
+      <span class="pl-s"><span class="pl-pds">"</span>sunday<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>06:00<span class="pl-pds">"</span></span> <span class="pl-c">/* , more values */</span>],
+        <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">"</span>06:40<span class="pl-pds">"</span></span> <span class="pl-c">/* , more values */</span>]
+      }
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>stops<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+      <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {
+          <span class="pl-s"><span class="pl-pds">"</span>id<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">50176</span>,
+          <span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Balçova Son Durak<span class="pl-pds">"</span></span>,
+          <span class="pl-s"><span class="pl-pds">"</span>location<span class="pl-pds">"</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">"</span>lat<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">38.38914</span>, <span class="pl-s"><span class="pl-pds">"</span>lon<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">27.03775</span>}
+        }
+        <span class="pl-c">/* more objects */</span>
+      ],
+      <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {
+          <span class="pl-s"><span class="pl-pds">"</span>id<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">10019</span>,
+          <span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Bahribaba<span class="pl-pds">"</span></span>,
+          <span class="pl-s"><span class="pl-pds">"</span>location<span class="pl-pds">"</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">"</span>lat<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">38.415519</span>, <span class="pl-s"><span class="pl-pds">"</span>lon<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">27.127131</span>}
+        }
+        <span class="pl-c">/* more objects */</span>
+      ]
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>route<span class="pl-pds">"</span></span><span class="pl-k">:</span> {
+      <span class="pl-s"><span class="pl-pds">"</span>departure<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {<span class="pl-s"><span class="pl-pds">"</span>lat<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">38.38443</span>, <span class="pl-s"><span class="pl-pds">"</span>lon<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">27.058214</span>}
+        <span class="pl-c">/* more objects */</span>
+      ],
+      <span class="pl-s"><span class="pl-pds">"</span>arrival<span class="pl-pds">"</span></span><span class="pl-k">:</span> [
+        {<span class="pl-s"><span class="pl-pds">"</span>lat<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">38.384633</span>, <span class="pl-s"><span class="pl-pds">"</span>lon<span class="pl-pds">"</span></span><span class="pl-k">:</span> <span class="pl-c1">27.058188</span>}
+        <span class="pl-c">/* more objects */</span>
+      ]
+    }
+  }
+}</pre></div>
+
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id of the bus which is the bus number</td>
+</tr>
+<tr>
+<td>departure</td>
+<td>Name of the location from which bus' route starts</td>
+</tr>
+<tr>
+<td>arrival</td>
+<td>Name of the location from which bus' route end</td>
+</tr>
+<tr>
+<td>times / <code>day</code> / departure</td>
+<td>Times when bus leaves from departure location for <code>day</code>
+</td>
+</tr>
+<tr>
+<td>times / <code>day</code> / arrival</td>
+<td>Times when bus leaves from arrival location for <code>day</code>
+</td>
+</tr>
+<tr>
+<td>stops / departure</td>
+<td>Stops on the route from departure location to arrival location</td>
+</tr>
+<tr>
+<td>stops / arrival</td>
+<td>Stops on the route from arrival location to departure location</td>
+</tr>
+<tr>
+<td>route / departure</td>
+<td>Points on the route from departure location to arrival location</td>
+</tr>
+<tr>
+<td>route / arrival</td>
+<td>Points on the route from arrival location to departure location</td>
+</tr>
+</tbody>
+</table>
+
+<p>For a stop:</p>
+
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Id of the stop</td>
+</tr>
+<tr>
+<td>name</td>
+<td>Name of the stop</td>
+</tr>
+<tr>
+<td>location</td>
+<td>Location of the stop</td>
+</tr>
+</tbody>
+</table>
+
+<p>For a location:</p>
+
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lat</td>
+<td>Latitude of the location</td>
+</tr>
+<tr>
+<td>lon</td>
+<td>Longitude of the location</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="api-errors" class="anchor" href="#api-errors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>API Errors</h2>
+
+<p>Eshotroid+ Server uses <a href="https://github.com/mehmetakiftutuncu/Errors"><strong>Errors</strong></a> to handle errors on server side. When something goes wrong, there will be a one or more errors.</p>
+
+<p>Here is an example error response:</p>
+
+<div class="highlight highlight-source-json"><pre>{
+  <span class="pl-s"><span class="pl-pds">"</span>errors<span class="pl-pds">"</span></span>: [
+    {
+      <span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>invalidData<span class="pl-pds">"</span></span>,
+      <span class="pl-s"><span class="pl-pds">"</span>reason<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Bus id must be &gt; 0!<span class="pl-pds">"</span></span>,
+      <span class="pl-s"><span class="pl-pds">"</span>data<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>-1<span class="pl-pds">"</span></span>
+    }
+  ]
+}</pre></div>
+
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>Name of the error</td>
+</tr>
+<tr>
+<td>reason <em>(Optional)</em>
+</td>
+<td>Reason why the error occurred</td>
+</tr>
+<tr>
+<td>data <em>(Optional)</em>
+</td>
+<td>Data related to the error</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
+
+<p>Eshotroid+ Server is licensed under the terms of the GNU General Public License version 3.</p>
+
+<pre><code>Eshotroid+ Server
+Copyright (C) 2016  Mehmet Akif Tütüncü
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+</code></pre>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/mehmetakiftutuncu/EshotroidPlusServer">Eshotroid+ Server</a> is maintained by <a href="https://github.com/mehmetakiftutuncu">mehmetakiftutuncu</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+            <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-30687698-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
