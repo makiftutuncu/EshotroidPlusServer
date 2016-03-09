@@ -1,6 +1,6 @@
-package com.mehmetakiftutuncu.models
+package com.mehmetakiftutuncu.eshotroidplus.models
 
-import com.mehmetakiftutuncu.utilities.base.EnumBase
+import com.mehmetakiftutuncu.eshotroidplus.utilities.base.EnumBase
 
 sealed trait Direction {val number: Int}
 

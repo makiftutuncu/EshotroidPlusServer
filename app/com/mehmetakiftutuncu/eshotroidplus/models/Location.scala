@@ -1,8 +1,8 @@
-package com.mehmetakiftutuncu.models
+package com.mehmetakiftutuncu.eshotroidplus.models
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
-import com.mehmetakiftutuncu.utilities.Log
+import com.mehmetakiftutuncu.eshotroidplus.models.base.{Jsonable, ModelBase}
+import com.mehmetakiftutuncu.eshotroidplus.utilities.Log
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 case class Location(latitude: Double, longitude: Double) extends ModelBase {

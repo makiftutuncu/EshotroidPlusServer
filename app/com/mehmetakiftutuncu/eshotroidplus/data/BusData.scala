@@ -1,9 +1,9 @@
-package com.mehmetakiftutuncu.data
+package com.mehmetakiftutuncu.eshotroidplus.data
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.models._
-import com.mehmetakiftutuncu.parsers.{BusListParserBase, BusPageParserBase}
-import com.mehmetakiftutuncu.utilities.{ConfBase, Log}
+import com.mehmetakiftutuncu.eshotroidplus.models._
+import com.mehmetakiftutuncu.eshotroidplus.parsers.{BusListParserBase, BusPageParserBase}
+import com.mehmetakiftutuncu.eshotroidplus.utilities.{ConfBase, Log}
 import play.api.Play.current
 import play.api.cache.Cache
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
@@ -12,13 +12,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object BusData extends BusDataBase {
-  override protected def Bus: BusBase                     = com.mehmetakiftutuncu.models.Bus
-  override protected def BusListParser: BusListParserBase = com.mehmetakiftutuncu.parsers.BusListParser
-  override protected def BusPageParser: BusPageParserBase = com.mehmetakiftutuncu.parsers.BusPageParser
-  override protected def Conf: ConfBase                   = com.mehmetakiftutuncu.utilities.Conf
-  override protected def RoutePoint: RoutePointBase       = com.mehmetakiftutuncu.models.RoutePoint
-  override protected def Stop: StopBase                   = com.mehmetakiftutuncu.models.Stop
-  override protected def Time: TimeBase                   = com.mehmetakiftutuncu.models.Time
+  override protected def Bus: BusBase                     = com.mehmetakiftutuncu.eshotroidplus.models.Bus
+  override protected def BusListParser: BusListParserBase = com.mehmetakiftutuncu.eshotroidplus.parsers.BusListParser
+  override protected def BusPageParser: BusPageParserBase = com.mehmetakiftutuncu.eshotroidplus.parsers.BusPageParser
+  override protected def Conf: ConfBase                   = com.mehmetakiftutuncu.eshotroidplus.utilities.Conf
+  override protected def RoutePoint: RoutePointBase       = com.mehmetakiftutuncu.eshotroidplus.models.RoutePoint
+  override protected def Stop: StopBase                   = com.mehmetakiftutuncu.eshotroidplus.models.Stop
+  override protected def Time: TimeBase                   = com.mehmetakiftutuncu.eshotroidplus.models.Time
 }
 
 trait BusDataBase {

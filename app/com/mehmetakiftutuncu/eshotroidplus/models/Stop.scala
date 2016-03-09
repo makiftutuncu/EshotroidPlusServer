@@ -1,9 +1,9 @@
-package com.mehmetakiftutuncu.models
+package com.mehmetakiftutuncu.eshotroidplus.models
 
 import anorm.NamedParameter
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
-import com.mehmetakiftutuncu.utilities.{DatabaseBase, Log}
+import com.mehmetakiftutuncu.eshotroidplus.models.base.{Jsonable, ModelBase}
+import com.mehmetakiftutuncu.eshotroidplus.utilities.{DatabaseBase, Log}
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 case class Stop(id: Int, name: String, busId: Int, direction: Direction, location: Location) extends ModelBase {
@@ -11,7 +11,7 @@ case class Stop(id: Int, name: String, busId: Int, direction: Direction, locatio
 }
 
 object Stop extends StopBase {
-  override protected def Database: DatabaseBase = com.mehmetakiftutuncu.utilities.Database
+  override protected def Database: DatabaseBase = com.mehmetakiftutuncu.eshotroidplus.utilities.Database
 }
 
 trait StopBase extends Jsonable[Stop] {

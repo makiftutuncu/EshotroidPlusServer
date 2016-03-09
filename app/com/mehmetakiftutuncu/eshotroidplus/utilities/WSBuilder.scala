@@ -1,4 +1,4 @@
-package com.mehmetakiftutuncu.utilities
+package com.mehmetakiftutuncu.eshotroidplus.utilities
 
 import play.api.Application
 import play.api.libs.ws.{WS, WSRequest}

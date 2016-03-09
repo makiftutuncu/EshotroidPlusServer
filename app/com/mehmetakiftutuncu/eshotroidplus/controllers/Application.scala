@@ -1,6 +1,6 @@
-package com.mehmetakiftutuncu.controllers
+package com.mehmetakiftutuncu.eshotroidplus.controllers
 
-import com.mehmetakiftutuncu.utilities.base.ControllerBase
+import com.mehmetakiftutuncu.eshotroidplus.utilities.base.ControllerBase
 import play.api.mvc._
 
 class Application extends ControllerBase {

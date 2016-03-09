@@ -1,7 +1,7 @@
-package com.mehmetakiftutuncu.utilities.base
+package com.mehmetakiftutuncu.eshotroidplus.utilities.base
 
 import com.github.mehmetakiftutuncu.errors.Errors
-import com.mehmetakiftutuncu.utilities.JsonErrorRepresenter
+import com.mehmetakiftutuncu.eshotroidplus.utilities.JsonErrorRepresenter
 import play.api.http.ContentTypes
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Controller, Result}

@@ -3,7 +3,7 @@
 # ~~~~
 
 # Home page
-GET     /              com.mehmetakiftutuncu.controllers.Application.test
+GET     /              com.mehmetakiftutuncu.eshotroidplus.controllers.Application.test
 
-GET     /bus/list      com.mehmetakiftutuncu.controllers.BusController.list
-GET     /bus/:busId    com.mehmetakiftutuncu.controllers.BusController.getBus(busId: Int)
+GET     /bus/list      com.mehmetakiftutuncu.eshotroidplus.controllers.BusController.list
+GET     /bus/:busId    com.mehmetakiftutuncu.eshotroidplus.controllers.BusController.getBus(busId: Int)

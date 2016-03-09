@@ -1,4 +1,4 @@
-package com.mehmetakiftutuncu.utilities.base
+package com.mehmetakiftutuncu.eshotroidplus.utilities.base
 
 trait EnumBase[E] {
   val values: Set[E]

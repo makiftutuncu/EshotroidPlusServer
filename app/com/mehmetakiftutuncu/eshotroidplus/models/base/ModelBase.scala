@@ -1,4 +1,4 @@
-package com.mehmetakiftutuncu.models.base
+package com.mehmetakiftutuncu.eshotroidplus.models.base
 
 import play.api.libs.json.JsObject
 

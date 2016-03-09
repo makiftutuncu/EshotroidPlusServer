@@ -1,9 +1,9 @@
-package com.mehmetakiftutuncu.models
+package com.mehmetakiftutuncu.eshotroidplus.models
 
 import anorm.NamedParameter
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.models.base.{Jsonable, ModelBase}
-import com.mehmetakiftutuncu.utilities.{DatabaseBase, Log}
+import com.mehmetakiftutuncu.eshotroidplus.models.base.{Jsonable, ModelBase}
+import com.mehmetakiftutuncu.eshotroidplus.utilities.{DatabaseBase, Log}
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 case class Bus(id: Int, departure: String, arrival: String) extends ModelBase {
@@ -11,7 +11,7 @@ case class Bus(id: Int, departure: String, arrival: String) extends ModelBase {
 }
 
 object Bus extends BusBase {
-  override protected def Database: DatabaseBase = com.mehmetakiftutuncu.utilities.Database
+  override protected def Database: DatabaseBase = com.mehmetakiftutuncu.eshotroidplus.utilities.Database
 }
 
 trait BusBase extends Jsonable[Bus] {

@@ -1,4 +1,4 @@
-package com.mehmetakiftutuncu.utilities
+package com.mehmetakiftutuncu.eshotroidplus.utilities
 
 import java.util.concurrent.TimeUnit
 
@@ -14,8 +14,8 @@ import scala.concurrent.duration.Duration
 import scala.util.matching.Regex
 
 object Http extends HttpBase {
-  override protected def Conf: ConfBase           = com.mehmetakiftutuncu.utilities.Conf
-  override protected def WSBuilder: WSBuilderBase = com.mehmetakiftutuncu.utilities.WSBuilder
+  override protected def Conf: ConfBase           = com.mehmetakiftutuncu.eshotroidplus.utilities.Conf
+  override protected def WSBuilder: WSBuilderBase = com.mehmetakiftutuncu.eshotroidplus.utilities.WSBuilder
 }
 
 trait HttpBase {

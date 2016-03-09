@@ -1,4 +1,4 @@
-package com.mehmetakiftutuncu.utilities
+package com.mehmetakiftutuncu.eshotroidplus.utilities
 
 import com.github.mehmetakiftutuncu.errors.base.ErrorBase
 import com.github.mehmetakiftutuncu.errors.representation.ErrorRepresenter

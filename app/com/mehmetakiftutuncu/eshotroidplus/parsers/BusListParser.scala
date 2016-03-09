@@ -1,16 +1,16 @@
-package com.mehmetakiftutuncu.parsers
+package com.mehmetakiftutuncu.eshotroidplus.parsers
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.models.Bus
-import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, Log, StringUtils}
+import com.mehmetakiftutuncu.eshotroidplus.models.Bus
+import com.mehmetakiftutuncu.eshotroidplus.utilities.{ConfBase, HttpBase, Log, StringUtils}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
 
 object BusListParser extends BusListParserBase {
-  override protected def Conf: ConfBase = com.mehmetakiftutuncu.utilities.Conf
-  override protected def Http: HttpBase = com.mehmetakiftutuncu.utilities.Http
+  override protected def Conf: ConfBase = com.mehmetakiftutuncu.eshotroidplus.utilities.Conf
+  override protected def Http: HttpBase = com.mehmetakiftutuncu.eshotroidplus.utilities.Http
 }
 
 trait BusListParserBase {

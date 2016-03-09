@@ -1,14 +1,14 @@
-package com.mehmetakiftutuncu.controllers
+package com.mehmetakiftutuncu.eshotroidplus.controllers
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
-import com.mehmetakiftutuncu.data.BusDataBase
-import com.mehmetakiftutuncu.utilities.base.ControllerBase
+import com.mehmetakiftutuncu.eshotroidplus.data.BusDataBase
+import com.mehmetakiftutuncu.eshotroidplus.utilities.base.ControllerBase
 import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class BusController extends BusControllerBase {
-  override protected def BusData: BusDataBase = com.mehmetakiftutuncu.data.BusData
+  override protected def BusData: BusDataBase = com.mehmetakiftutuncu.eshotroidplus.data.BusData
 }
 
 trait BusControllerBase extends ControllerBase {
