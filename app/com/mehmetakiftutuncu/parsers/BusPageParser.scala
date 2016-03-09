@@ -2,7 +2,7 @@ package com.mehmetakiftutuncu.parsers
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models._
-import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, StringUtils}
+import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, Log, StringUtils}
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -46,11 +46,16 @@ trait BusPageParserBase {
    * 5th occurrence of "timesUlStart" and "timesUlEnd" is for times for sunday from "Departure" location
    * 6th occurrence of "timesUlStart" and "timesUlEnd" is for times for sunday from "Arrival" location
    *
-   * Inside each occurrence, every match to "timeLiRegex" gives "hour" and "minute" respectively with group(1) and group(2) */
-  private val timesUlStart = """<ul class="timescape">"""
-  private val timesUlEnd   = """</ul>"""
-  private val timesUlRegex = """<ul.+?>([\s\S]+)<\/ul>""".r
-  private val timeLiRegex  = """<span.*?>(\d{2}):(\d{2})<\/span>""".r
+   * Inside each occurrence, every match to "timeLiRegex" gives "hour" and "minute" respectively with group(1) and group(2)
+   *
+   * Should an occurrence of "timesUlStart" couldn't be found, check if "noTimesInfoTextPart" exists close to the last known
+   * start point because some of the buses don't work on some days (for example; 736 İYTE bus on sundays) and instead of
+   * time list, there is a text info. If these criteria are met, don't error out. Instead return an empty list of times. */
+  private val timesUlStart        = """<ul class="timescape">"""
+  private val timesUlEnd          = """</ul>"""
+  private val timesUlRegex        = """<ul.+?>([\s\S]+)<\/ul>""".r
+  private val timeLiRegex         = """<span.*?>(\d{2}):(\d{2})<\/span>""".r
+  private val noTimesInfoTextPart = "&#231;alışmamaktadır"
 
   /* Basically this is a <script> ... </script> with Javascript objects named "pin" in it.
    * Each pin is a point on the map which when drawn together, constructs a bus' route.
@@ -77,6 +82,8 @@ trait BusPageParserBase {
       case Right(eshotBusPageString) =>
         extractStopsUl(eshotBusPageString) match {
           case Left(extractUlErrors) =>
+            Log.error("BusPageParser.getAndParseStops", s"Failed to extract stops ul from page for bus $busId from $direction!", extractUlErrors)
+
             Left(extractUlErrors)
 
           case Right(stopsUlString) =>
@@ -96,12 +103,18 @@ trait BusPageParserBase {
                 }
 
                 if (parseStopsErrors.nonEmpty) {
+                  Log.error("BusPageParser.getAndParseStops", s"Failed to parse stops for bus $busId from $direction!", parseStopsErrors)
+
                   Left(parseStopsErrors)
                 } else {
                   Right(stops)
                 }
             } getOrElse {
-              Left(Errors(CommonError.invalidData.reason("Could not extract stops!")))
+              val errors = Errors(CommonError.invalidData.reason("Could not extract stops!"))
+
+              Log.error("BusPageParser.getAndParseStops", s"Failed to extract contents of stops ul for bus $busId from $direction!", errors)
+
+              Left(errors)
             }
       }
     }
@@ -129,7 +142,22 @@ trait BusPageParserBase {
 
               extractTimesUl(eshotBusPageString, startIndexInPage) match {
                 case Left(extractUlErrors) =>
-                  (errors ++ extractUlErrors, timeSet, startIndexInPage)
+                  // Special and very edge case for some buses that do not work on some days
+                  val doesBusNotWorkOnThisDay: Boolean = extractUlErrors.exists {
+                    // Thanks to Errors, I can check what the error was and determine if it is recoverable
+                    case CommonError("invalidData", reason, lastStartIndex) if reason.contains("starting point") =>
+                      eshotBusPageString.indexOf(noTimesInfoTextPart, Try(lastStartIndex.toInt).getOrElse(0)) > 0
+                  }
+
+                  if (doesBusNotWorkOnThisDay) {
+                    Log.warn("BusPageParser.getAndParseTimes", s"Found no times for bus $busId for $dayType from $direction!")
+
+                    (errors, timeSet, startIndexInPage)
+                  } else {
+                    Log.error("BusPageParser.getAndParseTimes", s"Failed to extract times ul from page for bus $busId for $dayType from $direction!", extractUlErrors)
+
+                    (errors ++ extractUlErrors, timeSet, startIndexInPage)
+                  }
 
                 case Right((timesUlString, newStartIndex)) =>
                   timesUlRegex.findFirstMatchIn(timesUlString).map(_.group(1)) map {
@@ -148,12 +176,18 @@ trait BusPageParserBase {
                       }
 
                       if (parseTimesErrors.nonEmpty) {
+                        Log.error("BusPageParser.getAndParseTimes", s"Failed to parse times for bus $busId for $dayType from $direction!", parseTimesErrors)
+
                         (errors ++ parseTimesErrors, timeSet, newStartIndex)
                       } else {
                         (errors, timeSet ++ times, newStartIndex)
                       }
                   } getOrElse {
-                    (errors + CommonError.invalidData.reason("Could not extract times!"), timeSet, newStartIndex)
+                    val extractErrors: Errors = Errors(CommonError.invalidData.reason("Could not extract times!"))
+
+                    Log.error("BusPageParser.getAndParseTimes", s"Failed to extract contents of times ul for bus $busId for $dayType from $direction!", extractErrors)
+
+                    (errors ++ extractErrors, timeSet, newStartIndex)
                   }
               }
             }
@@ -175,6 +209,8 @@ trait BusPageParserBase {
       case Right(eshotBusPageString) =>
         extractRoutePointsScript(eshotBusPageString) match {
           case Left(extractRoutePointsScriptErrors) =>
+            Log.error("BusPageParser.getAndParseRoutePoints", s"Failed to extract route points script from page for bus $busId from $direction!", extractRoutePointsScriptErrors)
+
             Left(extractRoutePointsScriptErrors)
 
           case Right(routePointsScriptString) =>
@@ -195,12 +231,18 @@ trait BusPageParserBase {
                 }
 
                 if (parseRoutePointsErrors.nonEmpty) {
+                  Log.error("BusPageParser.getAndParseRoutePoints", s"Failed to parse route points script for bus $busId from $direction!", parseRoutePointsErrors)
+
                   Left(parseRoutePointsErrors)
                 } else {
                   Right(routePoints.toList.sortBy(p => (p.direction.toString, p.location.latitude, p.location.longitude)))
                 }
             } getOrElse {
-              Left(Errors(CommonError.invalidData.reason("Could not extract route points!")))
+              val errors = Errors(CommonError.invalidData.reason("Could not extract route points!"))
+
+              Log.error("BusPageParser.getAndParseRoutePoints", s"Failed to extract contents of route points script for bus $busId from $direction!", errors)
+
+              Left(errors)
             }
         }
     }

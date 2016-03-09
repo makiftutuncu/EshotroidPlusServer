@@ -164,15 +164,15 @@ trait BusDataBase {
                             "times" -> Json.obj(
                               "weekDays" -> Json.obj(
                                 "departure" -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray],
-                                "arrival"   -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray]
+                                "arrival"   -> Json.toJson(weekDaysTimes.filter(_.direction == Directions.Arrival).map(_.time)).as[JsArray]
                               ),
                               "saturday" -> Json.obj(
                                 "departure" -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray],
-                                "arrival"   -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray]
+                                "arrival"   -> Json.toJson(saturdayTimes.filter(_.direction == Directions.Arrival).map(_.time)).as[JsArray]
                               ),
                               "sunday" -> Json.obj(
                                 "departure" -> Json.toJson(sundayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray],
-                                "arrival"   -> Json.toJson(sundayTimes.filter(_.direction == Directions.Departure).map(_.time)).as[JsArray]
+                                "arrival"   -> Json.toJson(sundayTimes.filter(_.direction == Directions.Arrival).map(_.time)).as[JsArray]
                               )
                             )
                           )

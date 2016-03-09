@@ -44,7 +44,7 @@ trait RoutePointBase extends Jsonable[RoutePoint] {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
 
-        Log.error(t, "RoutePoint.getRoutePointsFromDB", s"""Failed to get route points for bus "$busId" from DB!""")
+        Log.error(t, "RoutePoint.getRoutePointsFromDB", s"Failed to get route points for bus $busId from DB!")
 
         Left(errors)
     }

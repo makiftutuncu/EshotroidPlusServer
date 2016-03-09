@@ -45,7 +45,7 @@ trait StopBase extends Jsonable[Stop] {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
 
-        Log.error(t, "Stop.getStopsFromDB", s"""Failed to get stops for bus "$busId" from DB!""")
+        Log.error(t, "Stop.getStopsFromDB", s"Failed to get stops for bus $busId from DB!")
 
         Left(errors)
     }

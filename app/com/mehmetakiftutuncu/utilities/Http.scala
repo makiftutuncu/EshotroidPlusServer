@@ -33,7 +33,9 @@ trait HttpBase {
   }
 
   private def cacheKey(url: String, data: Map[String, Seq[String]] = Map.empty[String, Seq[String]]): String = {
-    val dataKey: String = data.map { case (key, values) => s"$key=${values.mkString(",")}" }.mkString("&")
+    val dataKey: String = data.map {
+      case (key, values) => s"$key=${values.mkString(",")}"
+    }.mkString("&")
 
     s"$url${if (dataKey.isEmpty) "" else "_" + dataKey}"
   }

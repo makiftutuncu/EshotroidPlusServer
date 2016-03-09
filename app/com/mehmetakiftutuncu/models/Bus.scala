@@ -101,7 +101,7 @@ trait BusBase extends Jsonable[Bus] {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
 
-        Log.error(t, "Bus.getBusFromDB", s"""Failed to get bus "$id" from DB!""")
+        Log.error(t, "Bus.getBusFromDB", s"Failed to get bus $id from DB!")
 
         Left(errors)
     }
@@ -122,7 +122,7 @@ trait BusBase extends Jsonable[Bus] {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
 
-        Log.error(t, "Bus.saveBusToDB", s"""Failed to save bus "$bus" to DB!""")
+        Log.error(t, "Bus.saveBusToDB", s"Failed to save bus $bus to DB!")
 
         errors
     }

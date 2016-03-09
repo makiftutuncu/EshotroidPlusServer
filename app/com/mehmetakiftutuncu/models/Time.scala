@@ -49,7 +49,7 @@ trait TimeBase extends Jsonable[Time] {
       case t: Throwable =>
         val errors: Errors = Errors(CommonError.database)
 
-        Log.error(t, "Time.getTimesFromDB", s"""Failed to get times for bus "$busId" from DB!""")
+        Log.error(t, "Time.getTimesFromDB", s"Failed to get times for bus $busId from DB!")
 
         Left(errors)
     }

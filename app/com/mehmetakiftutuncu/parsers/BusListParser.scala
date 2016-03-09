@@ -2,7 +2,7 @@ package com.mehmetakiftutuncu.parsers
 
 import com.github.mehmetakiftutuncu.errors.{CommonError, Errors}
 import com.mehmetakiftutuncu.models.Bus
-import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, StringUtils}
+import com.mehmetakiftutuncu.utilities.{ConfBase, HttpBase, Log, StringUtils}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -30,6 +30,8 @@ trait BusListParserBase {
       case Right(eshotHomeString) =>
         extractBusListSelect(eshotHomeString) match {
           case Left(extractSelectErrors) =>
+            Log.error("BusListParser.getAndParseBusList", "Failed to extract bus list select from page!", extractSelectErrors)
+
             Left(extractSelectErrors)
 
           case Right(busListSelect) =>
@@ -49,12 +51,18 @@ trait BusListParserBase {
                 }
 
                 if (parseBusListErrors.nonEmpty) {
+                  Log.error("BusListParser.getAndParseBusList", "Failed to parse bus list!", parseBusListErrors)
+
                   Left(parseBusListErrors)
                 } else {
                   Right(busList)
                 }
             } getOrElse {
-              Left(Errors(CommonError.invalidData.reason("Could not extract bus list!")))
+              val errors = Errors(CommonError.invalidData.reason("Could not extract bus list!"))
+
+              Log.error("BusListParser.getAndParseBusList", "Failed to extract contents of bus list select!", errors)
+
+              Left(errors)
             }
       }
     }
