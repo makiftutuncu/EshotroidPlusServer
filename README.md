@@ -4,7 +4,7 @@ Welcome to Eshotroid+ Server!
 
 This is a server application providing information about public buses in İzmir, Turkey which are governed by [**Eshot**](http://www.eshot.gov.tr). It's purpose is to serve this information in Json format via a very simple RESTful API. There *will be* an Android application communicating with this server at [**Eshotroid+ Android**](https://github.com/mehmetakiftutuncu/EshotroidPlusAndroid).
 
-Eshotroid+ Server will run at [**Eshotroid+ Server on Heroku**](https://eshotroidplusserver.herokuapp.com).
+Eshotroid+ Server runs at [**Eshotroid+ Server on Heroku**](https://eshotroidplusserver.herokuapp.com).
 
 Disclaimer
 ----------
@@ -34,8 +34,8 @@ An example error response:
 }
 ```
 
-Bus List API `/bus/list`
-------------------------
+Bus List API [`/bus/list`](https://eshotroidplusserver.herokuapp.com/bus/list)
+------------------------------------------------------------------------------
 This API returns the list of buses available.
 
 ```javascript
@@ -57,8 +57,8 @@ id        | Id of the bus which is the bus number
 departure | Name of the location from which bus' route starts
 arrival   | Name of the location from which bus' route end
 
-Bus Details API `/bus/{id}`
----------------
+Bus Details API [`/bus/{id}`](https://eshotroidplusserver.herokuapp.com/bus/169)
+--------------------------------------------------------------------------------
 This API returns all the information about bus whose id is `{id}`.
 
 ```javascript
