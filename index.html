@@ -26,7 +26,7 @@
 
 <p>This is a server application providing information about public buses in İzmir, Turkey which are governed by <a href="http://www.eshot.gov.tr"><strong>Eshot</strong></a>. It's purpose is to serve this information in Json format via a very simple RESTful API. There <em>will be</em> an Android application communicating with this server at <a href="https://github.com/mehmetakiftutuncu/EshotroidPlusAndroid"><strong>Eshotroid+ Android</strong></a>.</p>
 
-<p>Eshotroid+ Server will run at <a href="https://eshotroidplusserver.herokuapp.com"><strong>Eshotroid+ Server on Heroku</strong></a>.</p>
+<p>Eshotroid+ Server runs at <a href="https://eshotroidplusserver.herokuapp.com"><strong>Eshotroid+ Server on Heroku</strong></a>.</p>
 
 <h2>
 <a id="disclaimer" class="anchor" href="#disclaimer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Disclaimer</h2>
@@ -56,7 +56,7 @@
 }</pre></div>
 
 <h2>
-<a id="bus-list-api-buslist" class="anchor" href="#bus-list-api-buslist" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bus List API <code>/bus/list</code>
+<a id="bus-list-api-buslist" class="anchor" href="#bus-list-api-buslist" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bus List API <a href="https://eshotroidplusserver.herokuapp.com/bus/list"><code>/bus/list</code></a>
 </h2>
 
 <p>This API returns the list of buses available.</p>
@@ -96,7 +96,7 @@
 </table>
 
 <h2>
-<a id="bus-details-api-busid" class="anchor" href="#bus-details-api-busid" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bus Details API <code>/bus/{id}</code>
+<a id="bus-details-api-busid" class="anchor" href="#bus-details-api-busid" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bus Details API <a href="https://eshotroidplusserver.herokuapp.com/bus/169"><code>/bus/{id}</code></a>
 </h2>
 
 <p>This API returns all the information about bus whose id is <code>{id}</code>.</p>
@@ -199,6 +199,8 @@
 </tr>
 </tbody>
 </table>
+
+<p>Times are <strong>HH:mm</strong> formatted strings.</p>
 
 <p>For a stop:</p>
 
