@@ -125,6 +125,8 @@ stops / arrival           | Stops on the route from arrival location to departur
 route / departure         | Points on the route from departure location to arrival location
 route / arrival           | Points on the route from arrival location to departure location
 
+Times are **HH:mm** formatted strings.
+
 For a stop:
 
 Key      | Details
