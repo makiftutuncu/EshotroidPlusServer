@@ -1,5 +1,5 @@
-conf/application.prod.conf
-conf/secret.prod.conf
+conf/application.dev.conf
+conf/secret.dev.conf
 
 # Created by .ignore support plugin (hsz.mobi)
 
