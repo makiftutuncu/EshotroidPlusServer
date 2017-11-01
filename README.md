@@ -4,8 +4,6 @@ Welcome to Eshotroid+ Server!
 
 This is a server application providing information about public buses in İzmir, Turkey which are governed by [**Eshot**](http://www.eshot.gov.tr). It's purpose is to serve this information in Json format via a very simple RESTful API. There *will be* an Android application communicating with this server at [**Eshotroid+ Android**](https://github.com/mehmetakiftutuncu/EshotroidPlusAndroid).
 
-Eshotroid+ Server runs at [**Eshotroid+ Server on Heroku**](https://eshotroidplusserver.herokuapp.com).
-
 Disclaimer
 ----------
 This application is developed as a hobby and **means absolutely no harm to Eshot**. It only serves information that is already available on [**Eshot's website**](http://www.eshot.gov.tr) in a format that is easier for other applications to use.
